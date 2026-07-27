@@ -1,3 +1,4 @@
 # Agentboard Tasks
 
-- [ ] Android IME source audit, reproducible Gradle build, behavior fixes, and debug APK validation — CLAIMED by Agent Buttercup (Session: agent-buttercup-agentboard)
+- [x] Android IME source audit and repair pass — SUPERSEDED by the Kotlin redesign; Agent Buttercup stopped cleanly with no source changes (Session: agent-buttercup-agentboard)
+- [ ] Kotlin Android IME architecture, interaction redesign, implementation, tests, and debug APK validation — CLAIMED by Team Keystorm (Session: team-keystorm)
