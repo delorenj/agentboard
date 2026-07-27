@@ -44,42 +44,81 @@ Cancelled or ambiguous gestures emit nothing.
   previous layer.
 - Starting or finishing an input view resets the layer and all one-shot state.
 
-## Build and test
+## Development lifecycle
 
-Install these prerequisites before building:
-
-- JDK 17 or newer. The project compiles Java and Kotlin bytecode for Java 17.
-- Android SDK with compile SDK 36 installed.
-- An Android SDK path configured for Gradle, typically through `ANDROID_HOME`,
-  `ANDROID_SDK_ROOT`, or `local.properties`.
-
-From the repository root, run the complete local validation:
+Mise tasks are the only supported operator entrypoints for development, build,
+test, and device deployment. Install
+[mise](https://mise.jdx.dev/getting-started.html), provide an Android SDK with
+platform 36 through `ANDROID_HOME` or `ANDROID_SDK_ROOT`, then bootstrap the
+repository:
 
 ```bash
-./gradlew testDebugUnitTest assembleDebug lintDebug
+mise run setup
 ```
 
-The debug APK is written to:
+Mise installs and activates the pinned Java 17 toolchain. The setup task checks
+that Java and Android platform 36 are available and warms the Gradle wrapper
+cache. Use `mise tasks` to discover the full task interface.
 
-```text
-app/build/outputs/apk/debug/app-debug.apk
+The primary local workflows are:
+
+```bash
+mise run dev
+mise run test
+mise run lint
+mise run check
+mise run clean
+mise run build
 ```
+
+- `dev` creates a fast debug APK at the current version without changing it.
+- `test` and `lint` are independently runnable and never mutate the version.
+- `check` composes the complete non-mutating test and lint quality gate.
+- `clean` removes generated build output.
+- `build` bumps the patch version once, reruns the quality gate, and creates the
+  versioned debug APK at `app/build/outputs/apk/debug/app-debug.apk`.
+
+The tasks internally drive the repository's Gradle wrapper; direct Gradle
+invocations are implementation details, not supported operator procedures.
 
 The current Android configuration uses `minSdk 23`, `targetSdk 36`, application
 ID `com.zellij.keyboard`, and IME service
 `com.zellij.keyboard.ZellijKeyboardService`.
 
-## Install and select the IME
+## Versioning
 
-The following commands install the debug APK, enable the actual service
-component, and select it as the active IME. Run them only from a host with
-Android platform tools and an authorized device:
+`VERSION` is the authoritative semantic version manifest. Gradle derives
+`versionName` directly from it and encodes its components as
+`major*1,000,000 + minor*1,000 + patch` for a monotonic Android `versionCode`.
+Minor and patch components are limited to 0–999, and the final code must fit
+Android's supported positive integer range.
+
+Use only the mise version tasks:
 
 ```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
-adb shell ime enable com.zellij.keyboard/.ZellijKeyboardService
-adb shell ime set com.zellij.keyboard/.ZellijKeyboardService
+mise run version
+mise run version:check
+mise run version:bump-patch
+mise run version:bump-minor
+mise run version:bump-major
+mise run version:sync
 ```
+
+Local builds deliberately do not track or create Git tags.
+
+## Install and select the IME
+
+With exactly one authorized Android device attached, run the complete debug
+deployment:
+
+```bash
+mise run deploy:debug
+```
+
+The deployment task strictly sequences a versioned build, APK replacement, IME
+enablement, and active-IME selection. Its internal phases use Android platform
+tools; direct `adb` invocations are implementation details, not supported
+operator procedures.
 
 As a manual alternative, install the APK, open the device's keyboard settings,
 enable **Agentboard** under the on-screen or managed keyboards list, open a
@@ -127,11 +166,10 @@ available in Git history.
 Local validation currently confirms the pure Kotlin behavior and Android build
 artifacts:
 
-- `./gradlew testDebugUnitTest assembleDebug lintDebug` succeeds.
-- Six JVM suites run 42 tests with zero failures or errors.
+- `mise run version:check`, `test`, `lint`, `check`, and `build` succeed.
+- Six JVM suites run 47 tests with zero failures or errors.
 - The debug APK is produced at the documented path.
-- Android lint reports 0 errors and one informational warning: Gradle 8.14.3
-  has an 8.14.5 update available.
+- Android lint reports zero issues.
 
 No device or terminal integration claim is made. Installation, IME
 enablement/selection, physical event delivery on Android, xterm.js handling,
