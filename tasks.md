@@ -10,4 +10,4 @@
   - [x] Native IME service and View hierarchy, gesture integration, resources, accessibility, and legacy cleanup — COMPLETED by WidgetWhisperer (Session: tempest-widgetwhisperer-native-ime, Commit: a8f0532)
 - [x] README build/install/enable/select/test guidance and local-vs-device validation seams — COMPLETED by Sir Fix-a-Lot (Session: keystorm-sir-fix-a-lot-docs, Commit: 073881d)
 - [x] Full `testDebugUnitTest assembleDebug lintDebug` validation, APK checksum, review, and epic-branch commits — COMPLETED by Bartholomew the Builder (Session: keystorm-bartholomew-final-qa, Reviewed HEAD: 073881d, Verdict: PASS)
-- [ ] Portrait-friendly keyboard row ergonomics and focused layout regression tests
+- [ ] Portrait-friendly keyboard row ergonomics and focused layout regression tests — CLAIMED by WidgetWhisperer Encore (Session: widgetwhisperer-mobile-layout)
