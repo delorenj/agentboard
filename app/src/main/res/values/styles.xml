@@ -1,5 +1,5 @@
 <resources>
-    <style name="KeyboardTheme" parent="Theme.AppCompat.NoActionBar">
+    <style name="KeyboardTheme" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/keyboard_background</item>
     </style>
 </resources>
