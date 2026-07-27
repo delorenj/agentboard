@@ -1,5 +1,6 @@
 # Agentboard Tasks
 
+- [x] Standardize all dev/build/test/deploy workflows on mise tasks and install semantic version parity — COMPLETED by SyntaxSorcerer (Session: syntaxsorcerer-mise-lifecycle, Commit: cecac3d; Integrated: 9d79ebb)
 - [x] Kotlin Android IME architecture, interaction redesign, implementation, tests, and debug APK validation — COMPLETED by Team Keystorm (Session: team-keystorm, Commit: e27ad30)
 - [x] Inherited Java prototype audit and independent build investigation — SUPERSEDED by Team Keystorm; Agent Buttercup session ended with its clean worktree at prototype commit f1bbfbb and no integration commit
 - [x] Pure Kotlin gesture, shortcut-command, and one-shot modifier models with JVM tests — COMPLETED by Codemaster Zigzag (Session: keystorm-codemaster-zigzag, Commit: 96e9e36)

@@ -169,7 +169,8 @@ artifacts:
 - `mise run version:check`, `test`, `lint`, `check`, and `build` succeed.
 - Six JVM suites run 47 tests with zero failures or errors.
 - The debug APK is produced at the documented path.
-- Android lint reports zero issues.
+- Android lint reports zero errors and one upgrade warning: Gradle 8.14.5 is
+  available while the wrapper remains on 8.14.3.
 
 No device or terminal integration claim is made. Installation, IME
 enablement/selection, physical event delivery on Android, xterm.js handling,
