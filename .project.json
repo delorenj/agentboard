@@ -1,0 +1,21 @@
+{
+  "project_name": "agentboard",
+  "project_description": "Android custom keyboard IME optimized for Zellij mobile workflows",
+  "project_slug": "agentboard",
+  "repo_path": "/home/delorenj/Documents/Codex/2026-07-26-quickdrop-zellij-keyboard-zip-here-is/agentboard",
+  "ticket_provider": {
+    "type": "plane",
+    "workspace": "33god",
+    "identifier": "AGEN",
+    "board_id": "",
+    "state": "planned"
+  },
+  "agents": {},
+  "automation": {
+    "reconcile": {
+      "enabled": false,
+      "grace_hours": 0,
+      "auto_review": true
+    }
+  }
+}
