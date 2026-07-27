@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Zellij Keyboard</string>
+    <string name="app_name">Agentboard</string>
     <string name="focus_pad_title">FOCUS</string>
     <string name="focus_pad_primary_hint">↑ ↓ ← → · Ctrl + arrow</string>
     <string name="focus_pad_secondary_hint">tap Ctrl+H · hold Ctrl+W</string>
@@ -19,7 +19,7 @@
     <string name="focus_feedback_left">Focus left, Control Left Arrow</string>
     <string name="focus_feedback_right">Focus right, Control Right Arrow</string>
     <string name="tabs_feedback_tap">Tab</string>
-    <string name="tabs_feedback_long_press">Restore tab, Control R</string>
+    <string name="tabs_feedback_long_press">Rename tab, Control R</string>
     <string name="tabs_feedback_up">New tab, Control T</string>
     <string name="tabs_feedback_down">Close tab, Control W</string>
     <string name="tabs_feedback_left">Previous tab, Control P</string>

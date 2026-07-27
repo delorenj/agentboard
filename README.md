@@ -10,20 +10,20 @@ determine what those events do.
 
 The `FOCUS` and `TABS` pads emit the following exact key combinations:
 
-| Pad | Gesture | Emitted keys |
-| --- | --- | --- |
-| `FOCUS` | Tap | `Ctrl+H` |
-| `FOCUS` | Touch and hold | `Ctrl+W` |
-| `FOCUS` | Swipe up | `Ctrl+Up Arrow` |
-| `FOCUS` | Swipe down | `Ctrl+Down Arrow` |
-| `FOCUS` | Swipe left | `Ctrl+Left Arrow` |
-| `FOCUS` | Swipe right | `Ctrl+Right Arrow` |
-| `TABS` | Tap | `Tab` |
-| `TABS` | Touch and hold | `Ctrl+R` |
-| `TABS` | Swipe up | `Ctrl+T` |
-| `TABS` | Swipe down | `Ctrl+W` |
-| `TABS` | Swipe left | `Ctrl+P` |
-| `TABS` | Swipe right | `Ctrl+N` |
+| Pad | Gesture | Emitted keys | Intended Zellij action |
+| --- | --- | --- | --- |
+| `FOCUS` | Tap | `Ctrl+H` | Toggle pane fullscreen |
+| `FOCUS` | Touch and hold | `Ctrl+W` | Close pane |
+| `FOCUS` | Swipe up | `Ctrl+Up Arrow` | Focus pane above |
+| `FOCUS` | Swipe down | `Ctrl+Down Arrow` | Focus pane below |
+| `FOCUS` | Swipe left | `Ctrl+Left Arrow` | Focus pane left |
+| `FOCUS` | Swipe right | `Ctrl+Right Arrow` | Focus pane right |
+| `TABS` | Tap | `Tab` | Send Tab |
+| `TABS` | Touch and hold | `Ctrl+R` | Rename tab |
+| `TABS` | Swipe up | `Ctrl+T` | New tab |
+| `TABS` | Swipe down | `Ctrl+W` | Close tab |
+| `TABS` | Swipe left | `Ctrl+P` | Previous tab |
+| `TABS` | Swipe right | `Ctrl+N` | Next tab |
 
 Cancelled or ambiguous gestures emit nothing.
 
@@ -82,9 +82,9 @@ adb shell ime set com.zellij.keyboard/.ZellijKeyboardService
 ```
 
 As a manual alternative, install the APK, open the device's keyboard settings,
-enable **Zellij Keyboard** under the on-screen or managed keyboards list, open a
-text field, invoke the system input-method picker, and select **Zellij
-Keyboard**. Android vendors label and locate these settings differently.
+enable **Agentboard** under the on-screen or managed keyboards list, open a
+text field, invoke the system input-method picker, and select **Agentboard**.
+Android vendors label and locate these settings differently.
 
 ## Architecture
 
