@@ -130,9 +130,8 @@ artifacts:
 - `./gradlew testDebugUnitTest assembleDebug lintDebug` succeeds.
 - Six JVM suites run 42 tests with zero failures or errors.
 - The debug APK is produced at the documented path.
-- Android lint reports 0 errors and 3 narrow warnings: `languageTag` requires
-  API 24 while `minSdk` is 23, Gradle 8.14.3 has an 8.14.5 update available,
-  and the application doesn't define an icon.
+- Android lint reports 0 errors and one informational warning: Gradle 8.14.3
+  has an 8.14.5 update available.
 
 No device or terminal integration claim is made. Installation, IME
 enablement/selection, physical event delivery on Android, xterm.js handling,
