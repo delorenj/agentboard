@@ -6,7 +6,7 @@
         android:theme="@style/KeyboardTheme">
 
         <service
-            android:name=".ZellijKeyboardService"
+            android:name="com.zellij.keyboard.ZellijKeyboardService"
             android:permission="android.permission.BIND_INPUT_METHOD"
             android:exported="true">
             <intent-filter>
