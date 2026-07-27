@@ -26,7 +26,7 @@ object TerminalKeyboardPlanner {
         val id: TerminalKeyId,
         val role: TerminalKeyRole,
         val action: KeyAction,
-        val widthUnits: Int = 1,
+        val widthUnits: Float = 1f,
     )
 
     private data class RowDefinition(
@@ -38,7 +38,6 @@ object TerminalKeyboardPlanner {
         listOf(
             row(
                 "letters_numbers",
-                named(TerminalKeyIds.ESCAPE, TerminalKeyRole.ESCAPE, Key.Named.ESCAPE, 2),
                 pair("digit_1", TerminalKeyRole.DIGIT, '1', '!'),
                 pair("digit_2", TerminalKeyRole.DIGIT, '2', '@'),
                 pair("digit_3", TerminalKeyRole.DIGIT, '3', '#'),
@@ -49,18 +48,9 @@ object TerminalKeyboardPlanner {
                 pair("digit_8", TerminalKeyRole.DIGIT, '8', '*'),
                 pair("digit_9", TerminalKeyRole.DIGIT, '9', '('),
                 pair("digit_0", TerminalKeyRole.DIGIT, '0', ')'),
-                pair("punctuation_minus", TerminalKeyRole.PUNCTUATION, '-', '_'),
-                pair("punctuation_equals", TerminalKeyRole.PUNCTUATION, '=', '+'),
-                named(
-                    TerminalKeyIds.BACKSPACE,
-                    TerminalKeyRole.BACKSPACE,
-                    Key.Named.BACKSPACE,
-                    2,
-                ),
             ),
             row(
                 "letters_qwerty",
-                named(TerminalKeyIds.TAB, TerminalKeyRole.TAB, Key.Named.TAB, 2),
                 letter('q'),
                 letter('w'),
                 letter('e'),
@@ -71,14 +61,9 @@ object TerminalKeyboardPlanner {
                 letter('i'),
                 letter('o'),
                 letter('p'),
-                pair("punctuation_left_bracket", TerminalKeyRole.PUNCTUATION, '[', '{'),
-                pair("punctuation_right_bracket", TerminalKeyRole.PUNCTUATION, ']', '}'),
-                pair("punctuation_backslash", TerminalKeyRole.PUNCTUATION, '\\', '|'),
             ),
             row(
                 "letters_home",
-                modifier(TerminalKeyIds.CTRL, KeyModifier.CTRL, 2),
-                modifier(TerminalKeyIds.ALT, KeyModifier.ALT, 2),
                 letter('a'),
                 letter('s'),
                 letter('d'),
@@ -88,13 +73,10 @@ object TerminalKeyboardPlanner {
                 letter('j'),
                 letter('k'),
                 letter('l'),
-                pair("punctuation_semicolon", TerminalKeyRole.PUNCTUATION, ';', ':'),
-                pair("punctuation_quote", TerminalKeyRole.PUNCTUATION, '\'', '"'),
-                named(TerminalKeyIds.ENTER, TerminalKeyRole.ENTER, Key.Named.ENTER, 2),
             ),
             row(
                 "letters_bottom",
-                shift(),
+                shift(1.5f),
                 letter('z'),
                 letter('x'),
                 letter('c'),
@@ -102,58 +84,29 @@ object TerminalKeyboardPlanner {
                 letter('b'),
                 letter('n'),
                 letter('m'),
-                pair("punctuation_comma", TerminalKeyRole.PUNCTUATION, ',', '<'),
-                pair("punctuation_period", TerminalKeyRole.PUNCTUATION, '.', '>'),
-                pair("punctuation_slash", TerminalKeyRole.PUNCTUATION, '/', '?'),
-                layer(),
+                named(
+                    TerminalKeyIds.BACKSPACE,
+                    TerminalKeyRole.BACKSPACE,
+                    Key.Named.BACKSPACE,
+                    1.5f,
+                ),
             ),
             row(
-                "letters_space",
-                named(TerminalKeyIds.SPACE, TerminalKeyRole.SPACE, Key.Named.SPACE, 12),
+                "letters_controls",
+                named(TerminalKeyIds.ESCAPE, TerminalKeyRole.ESCAPE, Key.Named.ESCAPE, 1f),
+                modifier(TerminalKeyIds.CTRL, KeyModifier.CTRL, 1.15f),
+                modifier(TerminalKeyIds.ALT, KeyModifier.ALT, 1f),
+                named(TerminalKeyIds.TAB, TerminalKeyRole.TAB, Key.Named.TAB, 1f),
+                layer(1.25f),
+                named(TerminalKeyIds.SPACE, TerminalKeyRole.SPACE, Key.Named.SPACE, 2.5f),
+                named(TerminalKeyIds.ENTER, TerminalKeyRole.ENTER, Key.Named.ENTER, 1.5f),
             ),
         )
 
     private val symbolRows: List<RowDefinition> =
         listOf(
             row(
-                "symbols_primary",
-                named(TerminalKeyIds.ESCAPE, TerminalKeyRole.ESCAPE, Key.Named.ESCAPE, 2),
-                fixed("symbol_exclamation", '!'),
-                fixed("symbol_at", '@'),
-                fixed("symbol_hash", '#'),
-                fixed("symbol_dollar", '$'),
-                fixed("symbol_percent", '%'),
-                fixed("symbol_caret", '^'),
-                fixed("symbol_ampersand", '&'),
-                fixed("symbol_asterisk", '*'),
-                fixed("symbol_left_parenthesis", '('),
-                fixed("symbol_right_parenthesis", ')'),
-                named(
-                    TerminalKeyIds.BACKSPACE,
-                    TerminalKeyRole.BACKSPACE,
-                    Key.Named.BACKSPACE,
-                    2,
-                ),
-            ),
-            row(
-                "symbols_pairs",
-                named(TerminalKeyIds.TAB, TerminalKeyRole.TAB, Key.Named.TAB, 2),
-                pair("symbol_minus", TerminalKeyRole.PUNCTUATION, '-', '_'),
-                pair("symbol_equals", TerminalKeyRole.PUNCTUATION, '=', '+'),
-                pair("symbol_left_bracket", TerminalKeyRole.PUNCTUATION, '[', '{'),
-                pair("symbol_right_bracket", TerminalKeyRole.PUNCTUATION, ']', '}'),
-                pair("symbol_backslash", TerminalKeyRole.PUNCTUATION, '\\', '|'),
-                pair("symbol_grave", TerminalKeyRole.PUNCTUATION, '`', '~'),
-                pair("symbol_semicolon", TerminalKeyRole.PUNCTUATION, ';', ':'),
-                pair("symbol_quote", TerminalKeyRole.PUNCTUATION, '\'', '"'),
-                pair("symbol_comma", TerminalKeyRole.PUNCTUATION, ',', '<'),
-                pair("symbol_period", TerminalKeyRole.PUNCTUATION, '.', '>'),
-                pair("symbol_slash", TerminalKeyRole.PUNCTUATION, '/', '?'),
-            ),
-            row(
                 "symbols_numbers",
-                modifier(TerminalKeyIds.CTRL, KeyModifier.CTRL, 2),
-                modifier(TerminalKeyIds.ALT, KeyModifier.ALT, 2),
                 fixed("symbol_digit_1", '1', TerminalKeyRole.DIGIT),
                 fixed("symbol_digit_2", '2', TerminalKeyRole.DIGIT),
                 fixed("symbol_digit_3", '3', TerminalKeyRole.DIGIT),
@@ -164,16 +117,53 @@ object TerminalKeyboardPlanner {
                 fixed("symbol_digit_8", '8', TerminalKeyRole.DIGIT),
                 fixed("symbol_digit_9", '9', TerminalKeyRole.DIGIT),
                 fixed("symbol_digit_0", '0', TerminalKeyRole.DIGIT),
-                named(TerminalKeyIds.ENTER, TerminalKeyRole.ENTER, Key.Named.ENTER, 2),
+            ),
+            row(
+                "symbols_primary",
+                fixed("symbol_exclamation", '!'),
+                fixed("symbol_at", '@'),
+                fixed("symbol_hash", '#'),
+                fixed("symbol_dollar", '$'),
+                fixed("symbol_percent", '%'),
+                fixed("symbol_caret", '^'),
+                fixed("symbol_ampersand", '&'),
+                fixed("symbol_asterisk", '*'),
+                fixed("symbol_left_parenthesis", '('),
+                fixed("symbol_right_parenthesis", ')'),
+            ),
+            row(
+                "symbols_pairs",
+                pair("symbol_grave", TerminalKeyRole.PUNCTUATION, '`', '~'),
+                pair("symbol_minus", TerminalKeyRole.PUNCTUATION, '-', '_'),
+                pair("symbol_equals", TerminalKeyRole.PUNCTUATION, '=', '+'),
+                pair("symbol_left_bracket", TerminalKeyRole.PUNCTUATION, '[', '{'),
+                pair("symbol_right_bracket", TerminalKeyRole.PUNCTUATION, ']', '}'),
+                pair("symbol_backslash", TerminalKeyRole.PUNCTUATION, '\\', '|'),
+            ),
+            row(
+                "symbols_bottom",
+                shift(2.5f),
+                pair("symbol_semicolon", TerminalKeyRole.PUNCTUATION, ';', ':'),
+                pair("symbol_quote", TerminalKeyRole.PUNCTUATION, '\'', '"'),
+                pair("symbol_comma", TerminalKeyRole.PUNCTUATION, ',', '<'),
+                pair("symbol_period", TerminalKeyRole.PUNCTUATION, '.', '>'),
+                pair("symbol_slash", TerminalKeyRole.PUNCTUATION, '/', '?'),
+                named(
+                    TerminalKeyIds.BACKSPACE,
+                    TerminalKeyRole.BACKSPACE,
+                    Key.Named.BACKSPACE,
+                    2.5f,
+                ),
             ),
             row(
                 "symbols_controls",
-                shift(),
-                layer(),
-            ),
-            row(
-                "symbols_space",
-                named(TerminalKeyIds.SPACE, TerminalKeyRole.SPACE, Key.Named.SPACE, 12),
+                named(TerminalKeyIds.ESCAPE, TerminalKeyRole.ESCAPE, Key.Named.ESCAPE, 1f),
+                modifier(TerminalKeyIds.CTRL, KeyModifier.CTRL, 1.15f),
+                modifier(TerminalKeyIds.ALT, KeyModifier.ALT, 1f),
+                named(TerminalKeyIds.TAB, TerminalKeyRole.TAB, Key.Named.TAB, 1f),
+                layer(1.25f),
+                named(TerminalKeyIds.SPACE, TerminalKeyRole.SPACE, Key.Named.SPACE, 2.5f),
+                named(TerminalKeyIds.ENTER, TerminalKeyRole.ENTER, Key.Named.ENTER, 1.5f),
             ),
         )
 
@@ -481,7 +471,7 @@ object TerminalKeyboardPlanner {
         id: TerminalKeyId,
         role: TerminalKeyRole,
         key: Key.Named,
-        widthUnits: Int,
+        widthUnits: Float,
     ): KeyDefinition =
         KeyDefinition(
             id = id,
@@ -493,7 +483,7 @@ object TerminalKeyboardPlanner {
     private fun modifier(
         id: TerminalKeyId,
         modifier: KeyModifier,
-        widthUnits: Int,
+        widthUnits: Float,
     ): KeyDefinition =
         KeyDefinition(
             id = id,
@@ -502,19 +492,19 @@ object TerminalKeyboardPlanner {
             widthUnits = widthUnits,
         )
 
-    private fun shift(): KeyDefinition =
+    private fun shift(widthUnits: Float): KeyDefinition =
         KeyDefinition(
             id = TerminalKeyIds.SHIFT,
             role = TerminalKeyRole.SHIFT,
             action = KeyAction.ToggleShift,
-            widthUnits = 3,
+            widthUnits = widthUnits,
         )
 
-    private fun layer(): KeyDefinition =
+    private fun layer(widthUnits: Float): KeyDefinition =
         KeyDefinition(
             id = TerminalKeyIds.LAYER,
             role = TerminalKeyRole.LAYER,
             action = KeyAction.ToggleLayer,
-            widthUnits = 3,
+            widthUnits = widthUnits,
         )
 }

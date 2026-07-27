@@ -27,7 +27,8 @@ internal class TerminalKeyboardView(
 ) : LinearLayout(context) {
     private val keyboardRows = LinearLayout(context)
     private val keyButtons = linkedMapOf<TerminalKeyId, Button>()
-    private var renderedSignature: List<Pair<String, List<TerminalKeyId>>> = emptyList()
+    private var renderedSignature:
+        List<Pair<String, List<Pair<TerminalKeyId, Float>>>> = emptyList()
 
     private val keyGap = resources.getDimensionPixelSize(R.dimen.key_gap)
     private val keyHeight = resources.getDimensionPixelSize(R.dimen.key_height)
@@ -69,7 +70,7 @@ internal class TerminalKeyboardView(
         val layout = TerminalKeyboardPlanner.layout(state)
         val signature =
             layout.rows.map { row ->
-                row.id to row.keys.map(TerminalKeyModel::id)
+                row.id to row.keys.map { model -> model.id to model.widthUnits }
             }
 
         if (signature != renderedSignature) {
@@ -142,7 +143,7 @@ internal class TerminalKeyboardView(
                 val button = createKeyButton(model)
                 row.addView(
                     button,
-                    LayoutParams(0, LayoutParams.MATCH_PARENT, model.widthUnits.toFloat()).apply {
+                    LayoutParams(0, LayoutParams.MATCH_PARENT, model.widthUnits).apply {
                         leftMargin = keyGap / 2
                         rightMargin = keyGap / 2
                     },

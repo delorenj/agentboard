@@ -58,7 +58,7 @@ data class TerminalKeyModel(
     val label: String,
     val accessibilityDescription: String,
     val role: TerminalKeyRole,
-    val widthUnits: Int = 1,
+    val widthUnits: Float = 1f,
     val isActive: Boolean = false,
 ) {
     init {
@@ -66,7 +66,9 @@ data class TerminalKeyModel(
         require(accessibilityDescription.isNotBlank()) {
             "terminal key accessibility description must not be blank"
         }
-        require(widthUnits > 0) { "terminal key width must be positive" }
+        require(widthUnits.isFinite() && widthUnits > 0f) {
+            "terminal key width must be positive and finite"
+        }
     }
 }
 

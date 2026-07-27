@@ -3,13 +3,14 @@ package com.zellij.keyboard.core
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class TerminalKeyboardPlannerTest {
     @Test
-    fun `letter layout exposes complete practical terminal rows`() {
+    fun `letter layout uses familiar phone rows and compact terminal controls`() {
         val layout = TerminalKeyboardPlanner.layout(TerminalKeyboardState())
 
         assertEquals(TerminalKeyboardLayer.LETTERS, layout.layer)
@@ -19,32 +20,34 @@ class TerminalKeyboardPlannerTest {
                 "letters_qwerty",
                 "letters_home",
                 "letters_bottom",
-                "letters_space",
+                "letters_controls",
             ),
             layout.rows.map(TerminalKeyboardRow::id),
         )
         assertEquals(
-            listOf("Esc", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "=", "⌫"),
+            listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
             layout.rows[0].keys.map(TerminalKeyModel::label),
         )
         assertEquals(
-            listOf("Tab", "q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "[", "]", "\\"),
+            listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"),
             layout.rows[1].keys.map(TerminalKeyModel::label),
         )
         assertEquals(
-            listOf("Ctrl", "Alt", "a", "s", "d", "f", "g", "h", "j", "k", "l", ";", "'", "Enter"),
+            listOf("a", "s", "d", "f", "g", "h", "j", "k", "l"),
             layout.rows[2].keys.map(TerminalKeyModel::label),
         )
         assertEquals(
-            listOf("Shift", "z", "x", "c", "v", "b", "n", "m", ",", ".", "/", "#+="),
+            listOf("Shift", "z", "x", "c", "v", "b", "n", "m", "⌫"),
             layout.rows[3].keys.map(TerminalKeyModel::label),
         )
-        assertEquals(listOf("Space"), layout.rows[4].keys.map(TerminalKeyModel::label))
-        assertEquals(layout.keys.size, layout.keys.map(TerminalKeyModel::id).distinct().size)
+        assertEquals(
+            listOf("Esc", "Ctrl", "Alt", "Tab", "#+=", "Space", "Enter"),
+            layout.rows[4].keys.map(TerminalKeyModel::label),
+        )
     }
 
     @Test
-    fun `symbol layout exposes symbols digits punctuation and terminal controls`() {
+    fun `symbol layout uses phone rows with paired punctuation and terminal controls`() {
         val layout =
             TerminalKeyboardPlanner.layout(
                 TerminalKeyboardState(layer = TerminalKeyboardLayer.SYMBOLS),
@@ -52,28 +55,204 @@ class TerminalKeyboardPlannerTest {
 
         assertEquals(
             listOf(
+                "symbols_numbers",
                 "symbols_primary",
                 "symbols_pairs",
-                "symbols_numbers",
+                "symbols_bottom",
                 "symbols_controls",
-                "symbols_space",
             ),
             layout.rows.map(TerminalKeyboardRow::id),
         )
         assertEquals(
-            listOf("Esc", "!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "⌫"),
+            listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0"),
             layout.rows[0].keys.map(TerminalKeyModel::label),
         )
         assertEquals(
-            listOf("Tab", "-", "=", "[", "]", "\\", "`", ";", "'", ",", ".", "/"),
+            listOf("!", "@", "#", "$", "%", "^", "&", "*", "(", ")"),
             layout.rows[1].keys.map(TerminalKeyModel::label),
         )
         assertEquals(
-            listOf("Ctrl", "Alt", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "Enter"),
+            listOf("`", "-", "=", "[", "]", "\\"),
             layout.rows[2].keys.map(TerminalKeyModel::label),
         )
-        assertEquals(listOf("Shift", "ABC"), layout.rows[3].keys.map(TerminalKeyModel::label))
-        assertEquals(listOf("Space"), layout.rows[4].keys.map(TerminalKeyModel::label))
+        assertEquals(
+            listOf("Shift", ";", "'", ",", ".", "/", "⌫"),
+            layout.rows[3].keys.map(TerminalKeyModel::label),
+        )
+        assertEquals(
+            listOf("Esc", "Ctrl", "Alt", "Tab", "ABC", "Space", "Enter"),
+            layout.rows[4].keys.map(TerminalKeyModel::label),
+        )
+    }
+
+    @Test
+    fun `every rendered layout has stable unique key IDs`() {
+        TerminalKeyboardLayer.entries.forEach { layer ->
+            TerminalShiftState.entries.forEach { shift ->
+                val layout =
+                    TerminalKeyboardPlanner.layout(
+                        TerminalKeyboardState(layer = layer, shift = shift),
+                    )
+
+                assertEquals(
+                    layout.keys.size,
+                    layout.keys.map(TerminalKeyModel::id).distinct().size,
+                    "Duplicate key ID in $layer with $shift",
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `complete supported characters modifiers and named keys remain reachable`() {
+        val expectedCharacters =
+            buildSet {
+                addAll('a'..'z')
+                addAll('A'..'Z')
+                addAll('0'..'9')
+                addAll(
+                    setOf(
+                        '!',
+                        '@',
+                        '#',
+                        '$',
+                        '%',
+                        '^',
+                        '&',
+                        '*',
+                        '(',
+                        ')',
+                        '-',
+                        '_',
+                        '=',
+                        '+',
+                        '[',
+                        '{',
+                        ']',
+                        '}',
+                        '\\',
+                        '|',
+                        '`',
+                        '~',
+                        ';',
+                        ':',
+                        '\'',
+                        '"',
+                        ',',
+                        '<',
+                        '.',
+                        '>',
+                        '/',
+                        '?',
+                    ),
+                )
+            }
+        val reachableCharacters =
+            TerminalKeyboardLayer.entries
+                .flatMap { layer ->
+                    TerminalShiftState.entries.flatMap { shift ->
+                        val state = TerminalKeyboardState(layer = layer, shift = shift)
+                        TerminalKeyboardPlanner
+                            .layout(state)
+                            .keys
+                            .mapNotNull { key ->
+                                (press(state, key.id).commandToEmit?.key as? Key.Character)?.value
+                            }
+                    }
+                }.toSet()
+
+        assertEquals(expectedCharacters, reachableCharacters)
+
+        val expectedNamedKeys =
+            setOf(
+                Key.Named.ESCAPE,
+                Key.Named.TAB,
+                Key.Named.ENTER,
+                Key.Named.BACKSPACE,
+                Key.Named.SPACE,
+            )
+        val expectedControls =
+            setOf(
+                TerminalKeyIds.SHIFT,
+                TerminalKeyIds.LAYER,
+                TerminalKeyIds.CTRL,
+                TerminalKeyIds.ALT,
+            )
+
+        TerminalKeyboardLayer.entries.forEach { layer ->
+            val state = TerminalKeyboardState(layer = layer)
+            val layout = TerminalKeyboardPlanner.layout(state)
+            val reachableNamedKeys =
+                layout.keys
+                    .mapNotNull { key ->
+                        press(state, key.id).commandToEmit?.key as? Key.Named
+                    }.toSet()
+
+            assertEquals(expectedNamedKeys, reachableNamedKeys, "Named keys missing on $layer")
+            assertTrue(
+                layout.keys.map(TerminalKeyModel::id).containsAll(expectedControls),
+                "Modifier or layer control missing on $layer",
+            )
+        }
+    }
+
+    @Test
+    fun `fractional weights widen edge and terminal controls`() {
+        val letters = TerminalKeyboardPlanner.layout(TerminalKeyboardState())
+        val letterBottom = letters.rows.single { it.id == "letters_bottom" }
+        val letterWidths =
+            letterBottom.keys
+                .filter { it.role == TerminalKeyRole.LETTER }
+                .map(TerminalKeyModel::widthUnits)
+
+        assertEquals(List(7) { 1f }, letterWidths)
+        assertEquals(1.5f, requireKey(letters, TerminalKeyIds.SHIFT).widthUnits)
+        assertEquals(1.5f, requireKey(letters, TerminalKeyIds.BACKSPACE).widthUnits)
+        assertTrue(requireKey(letters, TerminalKeyIds.SHIFT).widthUnits > letterWidths.max())
+        assertTrue(requireKey(letters, TerminalKeyIds.BACKSPACE).widthUnits > letterWidths.max())
+        assertEquals(
+            listOf(1f, 1.15f, 1f, 1f, 1.25f, 2.5f, 1.5f),
+            letters.rows.single { it.id == "letters_controls" }
+                .keys
+                .map(TerminalKeyModel::widthUnits),
+        )
+
+        val symbols =
+            TerminalKeyboardPlanner.layout(
+                TerminalKeyboardState(layer = TerminalKeyboardLayer.SYMBOLS),
+            )
+        assertEquals(2.5f, requireKey(symbols, TerminalKeyIds.SHIFT).widthUnits)
+        assertEquals(2.5f, requireKey(symbols, TerminalKeyIds.BACKSPACE).widthUnits)
+    }
+
+    @Test
+    fun `portrait rows never exceed ten normal touch target units`() {
+        TerminalKeyboardLayer.entries.forEach { layer ->
+            val layout = TerminalKeyboardPlanner.layout(TerminalKeyboardState(layer = layer))
+
+            layout.rows.forEach { row ->
+                assertTrue(
+                    row.keys.size <= 10,
+                    "${row.id} has ${row.keys.size} touch targets",
+                )
+                assertTrue(
+                    row.keys.sumOf { it.widthUnits.toDouble() } <= 10.0,
+                    "${row.id} exceeds ten normal-width units",
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `key width must be positive and finite`() {
+        val key = TerminalKeyboardPlanner.layout(TerminalKeyboardState()).keys.first()
+
+        listOf(0f, -1f, Float.NaN, Float.POSITIVE_INFINITY, Float.NEGATIVE_INFINITY)
+            .forEach { invalidWidth ->
+                assertFailsWith<IllegalArgumentException> {
+                    key.copy(widthUnits = invalidWidth)
+                }
+            }
     }
 
     @Test
@@ -95,7 +274,7 @@ class TerminalKeyboardPlannerTest {
         assertTrue(requireKey(layout, TerminalKeyIds.CTRL).isActive)
         assertTrue(requireKey(layout, TerminalKeyIds.ALT).isActive)
         assertFalse(requireKey(layout, TerminalKeyIds.LAYER).isActive)
-        assertEquals(12, requireKey(layout, TerminalKeyIds.SPACE).widthUnits)
+        assertEquals(2.5f, requireKey(layout, TerminalKeyIds.SPACE).widthUnits)
         assertEquals(TerminalKeyRole.BACKSPACE, requireKey(layout, TerminalKeyIds.BACKSPACE).role)
     }
 
@@ -116,20 +295,12 @@ class TerminalKeyboardPlannerTest {
     }
 
     @Test
-    fun `letter digits and punctuation resolve their shifted variants`() {
+    fun `letter digits resolve their shifted variants`() {
         val shifted = TerminalKeyboardState(shift = TerminalShiftState.ONE_SHOT)
 
         assertEquals(
             KeyCommand(Key.Character('!')),
             press(shifted, id("digit_1")).commandToEmit,
-        )
-        assertEquals(
-            KeyCommand(Key.Character('{')),
-            press(shifted, id("punctuation_left_bracket")).commandToEmit,
-        )
-        assertEquals(
-            KeyCommand(Key.Character('?')),
-            press(shifted, id("punctuation_slash")).commandToEmit,
         )
     }
 
