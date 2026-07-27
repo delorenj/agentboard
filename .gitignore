@@ -9,6 +9,16 @@ node_modules
 *.zip
 *.aab
 .lastagent
+
+# Android / Gradle
+.gradle/
+local.properties
+/build/
+/app/build/
+captures/
+.externalNativeBuild/
+.cxx/
+
 # AI & LLM Tools Artifacts
 ##################################
 # General AI/ML

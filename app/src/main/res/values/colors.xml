@@ -1,10 +1,18 @@
 <resources>
-    <color name="keyboard_background">#FF1E1E1E</color>
-    <color name="key_background">#FF333333</color>
-    <color name="key_pressed">#FF555555</color>
-    <color name="modifier_normal">#FF444444</color>
-    <color name="modifier_active">#FF4CAF50</color>
-    <color name="gesture_pad_bg">#FF2A2A2A</color>
-    <color name="key_text">#FFFFFFFF</color>
-    <color name="accent">#FF4CAF50</color>
+    <color name="keyboard_background">#10151D</color>
+    <color name="key_background">#202A37</color>
+    <color name="key_background_pressed">#34445A</color>
+    <color name="key_background_active">#53E0B1</color>
+    <color name="key_background_active_pressed">#7CEAC6</color>
+    <color name="key_border">#354459</color>
+    <color name="key_border_focused">#79D9FF</color>
+    <color name="key_text">#F5F8FC</color>
+    <color name="key_text_active">#09241D</color>
+    <color name="gesture_background">#17212D</color>
+    <color name="gesture_background_pressed">#263A4E</color>
+    <color name="gesture_border">#3A4C62</color>
+    <color name="gesture_border_active">#79D9FF</color>
+    <color name="gesture_title">#F5F8FC</color>
+    <color name="gesture_hint">#B7C4D4</color>
+    <color name="terminal_accent">#53E0B1</color>
 </resources>

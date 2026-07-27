@@ -1,4 +1,33 @@
 <resources>
     <string name="app_name">Zellij Keyboard</string>
-    <string name="subtype_label">Zellij</string>
+    <string name="focus_pad_title">FOCUS</string>
+    <string name="focus_pad_primary_hint">↑ ↓ ← → · Ctrl + arrow</string>
+    <string name="focus_pad_secondary_hint">tap Ctrl+H · hold Ctrl+W</string>
+    <string name="focus_pad_content_description">Focus gesture pad. Swipe up, down, left, or right to send Control plus the matching arrow. Tap sends Control H. Touch and hold sends Control W.</string>
+    <string name="tabs_pad_title">TABS</string>
+    <string name="tabs_pad_primary_hint">↑ new · ↓ close · ← prev · → next</string>
+    <string name="tabs_pad_secondary_hint">tap Tab · hold Ctrl+R</string>
+    <string name="tabs_pad_content_description">Tabs gesture pad. Swipe up for Control T, down for Control W, left for Control P, or right for Control N. Tap sends Tab. Touch and hold sends Control R.</string>
+    <string name="gesture_action_swipe_up">Run swipe up shortcut</string>
+    <string name="gesture_action_swipe_down">Run swipe down shortcut</string>
+    <string name="gesture_action_swipe_left">Run swipe left shortcut</string>
+    <string name="gesture_action_swipe_right">Run swipe right shortcut</string>
+    <string name="focus_feedback_tap">Focus shortcut, Control H</string>
+    <string name="focus_feedback_long_press">Focus shortcut, Control W</string>
+    <string name="focus_feedback_up">Focus up, Control Up Arrow</string>
+    <string name="focus_feedback_down">Focus down, Control Down Arrow</string>
+    <string name="focus_feedback_left">Focus left, Control Left Arrow</string>
+    <string name="focus_feedback_right">Focus right, Control Right Arrow</string>
+    <string name="tabs_feedback_tap">Tab</string>
+    <string name="tabs_feedback_long_press">Restore tab, Control R</string>
+    <string name="tabs_feedback_up">New tab, Control T</string>
+    <string name="tabs_feedback_down">Close tab, Control W</string>
+    <string name="tabs_feedback_left">Previous tab, Control P</string>
+    <string name="tabs_feedback_right">Next tab, Control N</string>
+    <string name="key_state_armed">Armed for the next command</string>
+    <string name="key_state_idle">Not armed</string>
+    <string name="key_state_shift_on">Shift armed for the next character</string>
+    <string name="key_state_shift_off">Shift off</string>
+    <string name="key_state_symbols">Symbols layer</string>
+    <string name="key_state_letters">Letters layer</string>
 </resources>
