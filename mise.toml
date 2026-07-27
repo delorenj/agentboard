@@ -1,6 +1,9 @@
 # mise configuration for agentboard
 # https://mise.jdx.dev/configuration.html
 
+[tools]
+java = "17"
+
 [env]
 _.path = [".mise/scripts", "agents/hermes/pm"]
 _.file = [".env"]
@@ -49,3 +52,118 @@ run = "python3 '{{config_root}}/.mise/scripts/provision-bmad-skills.py'"
 [tasks.hindsight-setup]
 description = "Provision this dev's shared project Hindsight key from 1Password into .env (op inject)"
 run = "'{{config_root}}/.mise/scripts/hindsight-setup.sh'"
+
+[tasks.setup]
+description = "Bootstrap and verify the local Android toolchain after cloning. Uses mise-pinned Java 17, requires Android SDK platform 36, warms the Gradle wrapper cache, and does not build an APK or change VERSION. Safe to repeat."
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+
+java_major="$(java -version 2>&1 | awk -F '[".]' '/version/ { print $2; exit }')"
+if [[ "$java_major" != "17" ]]; then
+  echo "Java 17 is required; mise resolved Java ${java_major:-unknown}." >&2
+  exit 1
+fi
+
+sdk_root="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+if [[ -z "$sdk_root" || ! -d "$sdk_root/platforms/android-36" ]]; then
+  echo "Android SDK platform 36 is required. Set ANDROID_HOME or ANDROID_SDK_ROOT." >&2
+  exit 1
+fi
+
+./gradlew --version
+"""
+
+[tasks.dev]
+description = "Assemble a fast debug APK at the current VERSION for iterative development. Depends on setup, writes only generated Gradle/app build output, and intentionally does not bump the project version. Use build for a versioned deliverable."
+depends = ["setup"]
+run = "./gradlew assembleDebug"
+
+[tasks.test]
+description = "Run all debug JVM unit tests with the mise-pinned Java toolchain. Reads the current VERSION during Gradle configuration, writes only test/build reports, exits non-zero on failure, and never changes VERSION."
+run = "./gradlew testDebugUnitTest"
+
+[tasks.lint]
+description = "Run Android lint for the debug variant with the mise-pinned Java toolchain. Writes only lint/build reports, exits non-zero on errors, and never changes VERSION."
+run = "./gradlew lintDebug"
+
+[tasks.check]
+description = "Run the complete non-mutating local quality gate by composing test and lint. Produces their reports, exits non-zero if either fails, and never changes VERSION."
+depends = ["test", "lint"]
+run = "echo 'Agentboard test and lint checks passed.'"
+
+[tasks.clean]
+description = "Remove generated Gradle and Android build outputs. Does not alter source, local SDK configuration, or VERSION. Run when stale build state needs to be discarded."
+run = "./gradlew clean"
+
+[tasks.build]
+description = "Create the versioned debug APK. Bumps VERSION by one patch first, runs the complete quality gate at the bumped version, then writes app/build/outputs/apk/debug/app-debug.apk. Mutates VERSION exactly once per invocation."
+depends = ["version:bump-patch"]
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+
+mise run check
+./gradlew assembleDebug
+"""
+
+[tasks."_deploy-debug-install"]
+description = "Internal debug deploy phase: after a successful versioned build, require one authorized adb device and replace its installed Agentboard APK. Mutates device state and fails without a reachable device."
+hide = true
+depends = ["build"]
+run = """
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "$(adb devices | awk 'NR > 1 && $2 == "device" { count++ } END { print count + 0 }')" != "1" ]]; then
+  echo "Exactly one authorized Android device is required for debug deployment." >&2
+  adb devices >&2
+  exit 1
+fi
+
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+"""
+
+[tasks."_deploy-debug-enable"]
+description = "Internal debug deploy phase: enable the installed Agentboard input-method service after APK installation. Mutates the connected device's enabled IME set."
+hide = true
+depends = ["_deploy-debug-install"]
+run = "adb shell ime enable com.zellij.keyboard/.ZellijKeyboardService"
+
+[tasks."_deploy-debug-select"]
+description = "Internal debug deploy phase: select Agentboard as the active input method after it is enabled. Mutates the connected device's active IME."
+hide = true
+depends = ["_deploy-debug-enable"]
+run = "adb shell ime set com.zellij.keyboard/.ZellijKeyboardService"
+
+[tasks."deploy:debug"]
+description = "Run the sequential device pipeline: versioned build, authorized-device install, IME enable, then IME selection. Requires exactly one connected adb device and changes that device's installed app and keyboard settings."
+depends = ["_deploy-debug-select"]
+run = "echo 'Agentboard debug APK installed, enabled, and selected.'"
+
+# >>> mise-versioning >>>  (managed block — do not edit by hand; re-run init to update)
+[tasks."version"]
+description = "Print the current version (vX.Y.Z)"
+run = "{{config_root}}/.mise/scripts/versioning.sh current"
+
+[tasks."version:bump"]
+description = "Bump patch version: vX.Y.Z -> vX.Y.(Z+1)"
+alias = "version:bump-patch"
+run = "{{config_root}}/.mise/scripts/versioning.sh bump patch"
+
+[tasks."version:bump-minor"]
+description = "Bump minor version: vX.Y.Z -> vX.(Y+1).0"
+run = "{{config_root}}/.mise/scripts/versioning.sh bump minor"
+
+[tasks."version:bump-major"]
+description = "Bump major version: vX.Y.Z -> v(X+1).0.0"
+run = "{{config_root}}/.mise/scripts/versioning.sh bump major"
+
+[tasks."version:check"]
+description = "Verify every versioned file is in parity"
+run = "{{config_root}}/.mise/scripts/versioning.sh check"
+
+[tasks."version:sync"]
+description = "Force every versioned file up to the highest version"
+run = "{{config_root}}/.mise/scripts/versioning.sh sync"
+# <<< mise-versioning <<<

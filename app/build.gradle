@@ -3,6 +3,35 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+def versionFile = rootProject.file('VERSION')
+if (!versionFile.isFile()) {
+    throw new GradleException("Missing VERSION file at ${versionFile}")
+}
+
+def appVersionName = versionFile.text.trim()
+def semverMatch = appVersionName =~ /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$/
+if (!semverMatch.matches()) {
+    throw new GradleException(
+        "VERSION must contain strict major.minor.patch semantic versioning; found '${appVersionName}'"
+    )
+}
+
+def majorVersion = new BigInteger(semverMatch.group(1))
+def minorVersion = new BigInteger(semverMatch.group(2))
+def patchVersion = new BigInteger(semverMatch.group(3))
+if (minorVersion > 999 || patchVersion > 999) {
+    throw new GradleException(
+        "VERSION minor and patch components must each be between 0 and 999; found '${appVersionName}'"
+    )
+}
+
+def appVersionCode = majorVersion * 1_000_000 + minorVersion * 1_000 + patchVersion
+if (appVersionCode < 1 || appVersionCode > 2_100_000_000) {
+    throw new GradleException(
+        "VERSION '${appVersionName}' maps to Android versionCode ${appVersionCode}, outside 1..2100000000"
+    )
+}
+
 android {
     namespace = 'com.zellij.keyboard'
     compileSdk = 36
@@ -11,8 +40,8 @@ android {
         applicationId = 'com.zellij.keyboard'
         minSdk = 23
         targetSdk = 36
-        versionCode = 1
-        versionName = '1.0'
+        versionCode = appVersionCode.intValue()
+        versionName = appVersionName
     }
 
     compileOptions {
