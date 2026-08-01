@@ -2,7 +2,6 @@ package com.zellij.keyboard
 
 import android.Manifest
 import android.app.Activity
-import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 
@@ -34,12 +33,7 @@ class MicrophonePermissionActivity : Activity() {
     }
 
     private fun publishPermissionResult(granted: Boolean) {
-        sendBroadcast(
-            Intent(MicrophonePermissionContract.ACTION_PERMISSION_RESULT).apply {
-                setPackage(packageName)
-                putExtra(MicrophonePermissionContract.EXTRA_GRANTED, granted)
-            },
-        )
+        MicrophonePermissionContract.onPermissionResult?.invoke(granted)
         finish()
     }
 
@@ -49,7 +43,5 @@ class MicrophonePermissionActivity : Activity() {
 }
 
 internal object MicrophonePermissionContract {
-    const val ACTION_PERMISSION_RESULT =
-        "com.zellij.keyboard.action.RECORD_AUDIO_PERMISSION_RESULT"
-    const val EXTRA_GRANTED = "granted"
+    var onPermissionResult: ((Boolean) -> Unit)? = null
 }

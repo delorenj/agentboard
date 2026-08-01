@@ -1,13 +1,9 @@
 package com.zellij.keyboard
 
 import android.Manifest
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.inputmethodservice.InputMethodService
-import android.os.Build
 import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
@@ -35,30 +31,6 @@ class ZellijKeyboardService : InputMethodService() {
     private var terminalInputView: TerminalKeyboardView? = null
     private var speechRecognizer: SpeechRecognizer? = null
     private var isListening = false
-    private var permissionRequestPending = false
-
-    private val permissionResultReceiver =
-        object : BroadcastReceiver() {
-            override fun onReceive(
-                context: Context?,
-                intent: Intent?,
-            ) {
-                if (intent?.action != MicrophonePermissionContract.ACTION_PERMISSION_RESULT) {
-                    return
-                }
-
-                permissionRequestPending = false
-                val granted =
-                    intent.getBooleanExtra(MicrophonePermissionContract.EXTRA_GRANTED, false) &&
-                        checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
-                        PackageManager.PERMISSION_GRANTED
-                if (granted) {
-                    terminalInputView?.post(::startVoiceRecognition)
-                } else {
-                    terminalInputView?.announceStatus(getString(R.string.voice_permission_denied))
-                }
-            }
-        }
 
     private val recognitionListener =
         object : RecognitionListener {
@@ -132,7 +104,7 @@ class ZellijKeyboardService : InputMethodService() {
 
     override fun onCreate() {
         super.onCreate()
-        registerPermissionResultReceiver()
+        MicrophonePermissionContract.onPermissionResult = ::handleMicrophonePermissionResult
     }
 
     override fun onCreateInputView(): View {
@@ -154,13 +126,6 @@ class ZellijKeyboardService : InputMethodService() {
     ) {
         super.onStartInputView(attribute, restarting)
         resetKeyboardState()
-        if (permissionRequestPending &&
-            checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            permissionRequestPending = false
-            terminalInputView?.post(::startVoiceRecognition)
-        }
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
@@ -175,7 +140,7 @@ class ZellijKeyboardService : InputMethodService() {
         isListening = false
         speechRecognizer?.destroy()
         speechRecognizer = null
-        unregisterReceiver(permissionResultReceiver)
+        MicrophonePermissionContract.onPermissionResult = null
         terminalInputView = null
         super.onDestroy()
     }
@@ -235,7 +200,6 @@ class ZellijKeyboardService : InputMethodService() {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=
             PackageManager.PERMISSION_GRANTED
         ) {
-            permissionRequestPending = true
             terminalInputView?.announceStatus(getString(R.string.voice_permission_needed))
             try {
                 startActivity(
@@ -244,14 +208,23 @@ class ZellijKeyboardService : InputMethodService() {
                     },
                 )
             } catch (_: RuntimeException) {
-                permissionRequestPending = false
                 terminalInputView?.announceStatus(getString(R.string.voice_permission_error))
             }
             return
         }
 
-        permissionRequestPending = false
         startVoiceRecognition()
+    }
+
+    private fun handleMicrophonePermissionResult(granted: Boolean) {
+        if (granted &&
+            checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            terminalInputView?.post(::startVoiceRecognition)
+        } else {
+            terminalInputView?.announceStatus(getString(R.string.voice_permission_denied))
+        }
     }
 
     private fun startVoiceRecognition() {
@@ -309,16 +282,6 @@ class ZellijKeyboardService : InputMethodService() {
     ) {
         isListening = listening
         terminalInputView?.renderMicrophoneState(listening, status)
-    }
-
-    @Suppress("DEPRECATION", "UnspecifiedRegisterReceiverFlag")
-    private fun registerPermissionResultReceiver() {
-        val filter = IntentFilter(MicrophonePermissionContract.ACTION_PERMISSION_RESULT)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(permissionResultReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(permissionResultReceiver, filter)
-        }
     }
 
     private fun updateKeyboardState(nextState: TerminalKeyboardState) {
