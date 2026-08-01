@@ -10,7 +10,7 @@ import com.zellij.keyboard.core.KeyCommand
  * This planner only reads compile-time Android constants; it calls no Android
  * APIs and its immutable output is safe to inspect in ordinary JVM tests.
  *
- * Modifiers are pressed in the stable order Ctrl, Alt, derived Shift and
+ * Modifiers are pressed in the stable order Ctrl, Alt, explicit/derived Shift and
  * released in reverse. Modifier DOWN specs include the newly pressed modifier
  * in their meta state. Modifier UP specs describe the state after release.
  */
@@ -28,7 +28,9 @@ object TerminalKeyEventPlanner {
             buildList {
                 if (command.modifiers.ctrl) add(PhysicalModifier.CTRL)
                 if (command.modifiers.alt) add(PhysicalModifier.ALT)
-                if (resolvedKey.requiresShift) add(PhysicalModifier.SHIFT)
+                if (command.modifiers.shift || resolvedKey.requiresShift) {
+                    add(PhysicalModifier.SHIFT)
+                }
             }
 
         val events = mutableListOf<AndroidKeyEventSpec>()

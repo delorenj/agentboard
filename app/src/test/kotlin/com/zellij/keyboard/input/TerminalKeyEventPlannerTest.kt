@@ -186,6 +186,40 @@ class TerminalKeyEventPlannerTest {
     }
 
     @Test
+    fun `explicit shift emits the exact ctrl shift arrow chord used by Zellij`() {
+        val plan =
+            ready(
+                KeyCommand(
+                    key = Key.Named.ARROW_LEFT,
+                    modifiers = KeyModifiers.CTRL_SHIFT,
+                ),
+            )
+
+        assertEquals(
+            listOf(
+                KeyEvent.KEYCODE_CTRL_LEFT,
+                KeyEvent.KEYCODE_SHIFT_LEFT,
+                KeyEvent.KEYCODE_DPAD_LEFT,
+                KeyEvent.KEYCODE_DPAD_LEFT,
+                KeyEvent.KEYCODE_SHIFT_LEFT,
+                KeyEvent.KEYCODE_CTRL_LEFT,
+            ),
+            plan.events.map(AndroidKeyEventSpec::keyCode),
+        )
+        assertEquals(
+            listOf(
+                CTRL_META,
+                CTRL_META or SHIFT_META,
+                CTRL_META or SHIFT_META,
+                CTRL_META or SHIFT_META,
+                CTRL_META,
+                0,
+            ),
+            plan.events.map(AndroidKeyEventSpec::metaState),
+        )
+    }
+
+    @Test
     fun `unknown characters fail explicitly without an event plan`() {
         assertEquals(
             TerminalKeyEventPlanResult.UnsupportedCharacter('é'),

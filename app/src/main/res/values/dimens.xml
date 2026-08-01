@@ -7,8 +7,9 @@
     <dimen name="key_border_width">1dp</dimen>
     <dimen name="key_text_size">15sp</dimen>
     <dimen name="key_control_text_size">11sp</dimen>
-    <dimen name="gesture_pad_height">92dp</dimen>
+    <dimen name="gesture_zones_height">184dp</dimen>
     <dimen name="gesture_corner_radius">11dp</dimen>
     <dimen name="gesture_border_width">1dp</dimen>
+    <dimen name="gesture_joystick_ring_width">2dp</dimen>
     <dimen name="gesture_swipe_distance">56dp</dimen>
 </resources>

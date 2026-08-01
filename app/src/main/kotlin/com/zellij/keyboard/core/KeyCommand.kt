@@ -9,17 +9,20 @@ enum class KeyModifier {
 data class KeyModifiers(
     val ctrl: Boolean = false,
     val alt: Boolean = false,
+    val shift: Boolean = false,
 ) {
     operator fun plus(other: KeyModifiers): KeyModifiers =
         KeyModifiers(
             ctrl = ctrl || other.ctrl,
             alt = alt || other.alt,
+            shift = shift || other.shift,
         )
 
     companion object {
         val NONE = KeyModifiers()
         val CTRL = KeyModifiers(ctrl = true)
         val ALT = KeyModifiers(alt = true)
+        val CTRL_SHIFT = KeyModifiers(ctrl = true, shift = true)
     }
 }
 

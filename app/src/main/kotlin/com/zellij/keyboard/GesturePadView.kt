@@ -21,6 +21,7 @@ import com.zellij.keyboard.core.GestureResult
 import com.zellij.keyboard.core.GestureThresholds
 import com.zellij.keyboard.core.SwipeDirection
 import kotlin.math.max
+import kotlin.math.min
 
 /**
  * Single-pointer terminal gesture surface backed by the platform-independent
@@ -65,6 +66,24 @@ internal class GesturePadView(
             textAlign = Paint.Align.CENTER
             textSize = spToPx(10.5f)
         }
+    private val joystickPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = context.getColor(R.color.terminal_accent)
+            style = Paint.Style.FILL
+        }
+    private val joystickRingPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = context.getColor(R.color.gesture_hint)
+            style = Paint.Style.STROKE
+            strokeWidth = resources.getDimension(R.dimen.gesture_joystick_ring_width)
+        }
+    private val joystickGlyphPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = context.getColor(R.color.gesture_hint)
+            textAlign = Paint.Align.CENTER
+            textSize = spToPx(18f)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        }
 
     private val title: String
     private val primaryHint: String
@@ -96,23 +115,23 @@ internal class GesturePadView(
 
     init {
         when (pad) {
-            GesturePad.FOCUS -> {
-                title = resources.getString(R.string.focus_pad_title)
-                primaryHint = resources.getString(R.string.focus_pad_primary_hint)
-                secondaryHint = resources.getString(R.string.focus_pad_secondary_hint)
-                semantics = resources.getString(R.string.focus_pad_content_description)
-            }
             GesturePad.TABS -> {
                 title = resources.getString(R.string.tabs_pad_title)
                 primaryHint = resources.getString(R.string.tabs_pad_primary_hint)
                 secondaryHint = resources.getString(R.string.tabs_pad_secondary_hint)
                 semantics = resources.getString(R.string.tabs_pad_content_description)
             }
+            GesturePad.PANES -> {
+                title = resources.getString(R.string.panes_pad_title)
+                primaryHint = resources.getString(R.string.panes_pad_primary_hint)
+                secondaryHint = resources.getString(R.string.panes_pad_secondary_hint)
+                semantics = resources.getString(R.string.panes_pad_content_description)
+            }
         }
 
         contentDescription = semantics
-        isClickable = true
-        isLongClickable = true
+        isClickable = false
+        isLongClickable = false
         isFocusable = true
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
         setWillNotDraw(false)
@@ -151,9 +170,10 @@ internal class GesturePadView(
         canvas.drawRoundRect(cardBounds, radius, radius, borderPaint)
 
         val centerX = width / 2f
-        canvas.drawText(title, centerX, height * 0.33f, titlePaint)
-        canvas.drawText(primaryHint, centerX, height * 0.62f, hintPaint)
-        canvas.drawText(secondaryHint, centerX, height * 0.82f, hintPaint)
+        canvas.drawText(title, centerX, height * 0.19f, titlePaint)
+        drawJoystick(canvas, centerX, height * 0.53f)
+        canvas.drawText(primaryHint, centerX, height * 0.82f, hintPaint)
+        canvas.drawText(secondaryHint, centerX, height * 0.95f, hintPaint)
     }
 
     override fun drawableStateChanged() {
@@ -246,20 +266,22 @@ internal class GesturePadView(
     override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
         super.onInitializeAccessibilityNodeInfo(info)
         info.className = Button::class.java.name
-        info.isClickable = true
-        info.isLongClickable = true
-        info.addAction(
-            AccessibilityNodeInfo.AccessibilityAction(
-                R.id.accessibility_swipe_up,
-                resources.getString(R.string.gesture_action_swipe_up),
-            ),
-        )
-        info.addAction(
-            AccessibilityNodeInfo.AccessibilityAction(
-                R.id.accessibility_swipe_down,
-                resources.getString(R.string.gesture_action_swipe_down),
-            ),
-        )
+        info.isClickable = false
+        info.isLongClickable = false
+        if (pad == GesturePad.PANES) {
+            info.addAction(
+                AccessibilityNodeInfo.AccessibilityAction(
+                    R.id.accessibility_swipe_up,
+                    resources.getString(R.string.gesture_action_swipe_up),
+                ),
+            )
+            info.addAction(
+                AccessibilityNodeInfo.AccessibilityAction(
+                    R.id.accessibility_swipe_down,
+                    resources.getString(R.string.gesture_action_swipe_down),
+                ),
+            )
+        }
         info.addAction(
             AccessibilityNodeInfo.AccessibilityAction(
                 R.id.accessibility_swipe_left,
@@ -279,10 +301,18 @@ internal class GesturePadView(
         arguments: Bundle?,
     ): Boolean =
         when (action) {
-            AccessibilityNodeInfo.ACTION_CLICK -> performClick()
-            AccessibilityNodeInfo.ACTION_LONG_CLICK -> performLongClick()
-            R.id.accessibility_swipe_up -> performAccessibleSwipe(SwipeDirection.UP)
-            R.id.accessibility_swipe_down -> performAccessibleSwipe(SwipeDirection.DOWN)
+            R.id.accessibility_swipe_up ->
+                if (pad == GesturePad.PANES) {
+                    performAccessibleSwipe(SwipeDirection.UP)
+                } else {
+                    super.performAccessibilityAction(action, arguments)
+                }
+            R.id.accessibility_swipe_down ->
+                if (pad == GesturePad.PANES) {
+                    performAccessibleSwipe(SwipeDirection.DOWN)
+                } else {
+                    super.performAccessibilityAction(action, arguments)
+                }
             R.id.accessibility_swipe_left -> performAccessibleSwipe(SwipeDirection.LEFT)
             R.id.accessibility_swipe_right -> performAccessibleSwipe(SwipeDirection.RIGHT)
             else -> super.performAccessibilityAction(action, arguments)
@@ -353,27 +383,27 @@ internal class GesturePadView(
     private fun feedbackFor(result: GestureResult): String {
         val stringId =
             when (pad) {
-                GesturePad.FOCUS ->
+                GesturePad.PANES ->
                     when (result) {
-                        GestureResult.Tap -> R.string.focus_feedback_tap
-                        GestureResult.LongPress -> R.string.focus_feedback_long_press
+                        GestureResult.Tap -> R.string.gesture_feedback_ignored
+                        GestureResult.LongPress -> R.string.gesture_feedback_ignored
                         is GestureResult.Swipe ->
                             when (result.direction) {
-                                SwipeDirection.UP -> R.string.focus_feedback_up
-                                SwipeDirection.DOWN -> R.string.focus_feedback_down
-                                SwipeDirection.LEFT -> R.string.focus_feedback_left
-                                SwipeDirection.RIGHT -> R.string.focus_feedback_right
+                                SwipeDirection.UP -> R.string.panes_feedback_up
+                                SwipeDirection.DOWN -> R.string.panes_feedback_down
+                                SwipeDirection.LEFT -> R.string.panes_feedback_left
+                                SwipeDirection.RIGHT -> R.string.panes_feedback_right
                             }
                         GestureResult.Cancelled -> error("Cancelled gestures are not announced")
                     }
                 GesturePad.TABS ->
                     when (result) {
-                        GestureResult.Tap -> R.string.tabs_feedback_tap
-                        GestureResult.LongPress -> R.string.tabs_feedback_long_press
+                        GestureResult.Tap -> R.string.gesture_feedback_ignored
+                        GestureResult.LongPress -> R.string.gesture_feedback_ignored
                         is GestureResult.Swipe ->
                             when (result.direction) {
-                                SwipeDirection.UP -> R.string.tabs_feedback_up
-                                SwipeDirection.DOWN -> R.string.tabs_feedback_down
+                                SwipeDirection.UP -> R.string.gesture_feedback_ignored
+                                SwipeDirection.DOWN -> R.string.gesture_feedback_ignored
                                 SwipeDirection.LEFT -> R.string.tabs_feedback_left
                                 SwipeDirection.RIGHT -> R.string.tabs_feedback_right
                             }
@@ -381,6 +411,23 @@ internal class GesturePadView(
                     }
             }
         return resources.getString(stringId)
+    }
+
+    private fun drawJoystick(
+        canvas: Canvas,
+        centerX: Float,
+        centerY: Float,
+    ) {
+        val radius = min(width, height) * 0.085f
+        canvas.drawCircle(centerX, centerY, radius * 1.75f, joystickRingPaint)
+        canvas.drawCircle(centerX, centerY, radius, joystickPaint)
+        canvas.drawText("←", centerX - radius * 3.2f, centerY + radius * 0.65f, joystickGlyphPaint)
+        canvas.drawText("→", centerX + radius * 3.2f, centerY + radius * 0.65f, joystickGlyphPaint)
+
+        if (pad == GesturePad.PANES) {
+            canvas.drawText("↑", centerX, centerY - radius * 2.45f, joystickGlyphPaint)
+            canvas.drawText("↓", centerX, centerY + radius * 3.15f, joystickGlyphPaint)
+        }
     }
 
     @Suppress("DEPRECATION")
