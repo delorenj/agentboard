@@ -1,13 +1,5 @@
 <resources>
     <color name="keyboard_background">#10151D</color>
-    <color name="key_background">#202A37</color>
-    <color name="key_background_pressed">#34445A</color>
-    <color name="key_background_active">#53E0B1</color>
-    <color name="key_background_active_pressed">#7CEAC6</color>
-    <color name="key_border">#354459</color>
-    <color name="key_border_focused">#79D9FF</color>
-    <color name="key_text">#F5F8FC</color>
-    <color name="key_text_active">#09241D</color>
     <color name="gesture_background">#17212D</color>
     <color name="gesture_background_pressed">#263A4E</color>
     <color name="gesture_border">#3A4C62</color>

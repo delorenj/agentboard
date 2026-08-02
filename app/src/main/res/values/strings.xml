@@ -1,12 +1,12 @@
 <resources>
     <string name="app_name">Agentboard</string>
     <string name="tabs_pad_title">TABS</string>
-    <string name="tabs_pad_primary_hint">swipe ← previous · next →</string>
-    <string name="tabs_pad_secondary_hint">up · down · tap ignored</string>
-    <string name="tabs_pad_content_description">Tabs joystick. Swipe left for the previous tab or right for the next tab. Up, down, taps, and holds are ignored.</string>
+    <string name="tabs_pad_primary_hint">← previous tab · tap mic · next tab →</string>
+    <string name="tabs_pad_secondary_hint">hold to continue · up/down ignored</string>
+    <string name="tabs_pad_content_description">Tabs zone. Swipe left for the previous tab or right for the next tab. Tap for microphone input. Touch and hold to continue the last agent. Up and down are ignored.</string>
     <string name="panes_pad_title">PANES</string>
     <string name="panes_pad_primary_hint">swipe ↑ ↓ ← → · navigate panes</string>
-    <string name="panes_pad_secondary_hint">edge swipes can cross tabs in Zellij</string>
+    <string name="panes_pad_secondary_hint">direct Zellij control · edges cross tabs</string>
     <string name="panes_pad_content_description">Panes joystick. Swipe up, down, left, or right to navigate panes. Horizontal edge swipes can cross tabs. Taps and holds are ignored.</string>
     <string name="gesture_action_swipe_up">Run swipe up shortcut</string>
     <string name="gesture_action_swipe_down">Run swipe down shortcut</string>
@@ -19,23 +19,18 @@
     <string name="panes_feedback_right">Pane or tab right</string>
     <string name="tabs_feedback_left">Previous tab</string>
     <string name="tabs_feedback_right">Next tab</string>
-    <string name="microphone_action">Mic</string>
-    <string name="microphone_action_description">Start voice input</string>
+    <string name="tabs_feedback_microphone">Microphone</string>
+    <string name="tabs_feedback_continue">Continue last agent</string>
     <string name="microphone_listening">Listening…</string>
-    <string name="microphone_listening_description">Listening for voice input</string>
-    <string name="collapse_deck_symbol">▾</string>
-    <string name="expand_deck_symbol">▴</string>
-    <string name="collapse_deck_description">Collapse agent and terminal controls</string>
-    <string name="expand_deck_description">Expand agent and terminal controls</string>
     <string name="voice_permission_needed">Microphone permission is required.</string>
     <string name="voice_permission_denied">Microphone permission was not granted.</string>
     <string name="voice_permission_error">Android could not open the microphone permission prompt.</string>
     <string name="voice_recognition_unavailable">Voice recognition is not available on this device.</string>
     <string name="voice_listening">Listening</string>
-    <string name="voice_no_match">I didn’t catch that. Tap Mic to try again.</string>
-    <string name="voice_error">Voice input stopped. Tap Mic to try again.</string>
+    <string name="voice_no_match">I didn’t catch that. Tap the Tabs zone to try again.</string>
+    <string name="voice_error">Voice input stopped. Tap the Tabs zone to try again.</string>
     <string name="voice_inserted">Voice input inserted</string>
     <string name="agent_command_failed">Agent command stopped before execution because the terminal rejected input.</string>
-    <string name="key_state_armed">Armed for the next command</string>
-    <string name="key_state_idle">Not armed</string>
+    <string name="zellij_bridge_not_configured">Zellij bridge credentials are not configured in this build.</string>
+    <string name="zellij_bridge_failed">The Zellij bridge could not complete that gesture.</string>
 </resources>

@@ -1,6 +1,6 @@
 # Agentboard Tasks
 
-- [x] Voice-first command deck with stacked tab/pane joysticks, agent launchers, `.lastagent` continuation, and microphone dictation — COMPLETED locally; device QA remains pending
+- [x] Authenticated host bridge and button-free top/bottom gesture zones using direct Zellij actions, top-zone microphone input, and `.lastagent` continuation — BRIDGE LIVE; credentialed APK built; device QA remains pending
 - [x] Standardize all dev/build/test/deploy workflows on mise tasks and install semantic version parity — COMPLETED by SyntaxSorcerer (Session: syntaxsorcerer-mise-lifecycle, Commit: cecac3d; Integrated: 9d79ebb)
 - [x] Kotlin Android IME architecture, interaction redesign, implementation, tests, and debug APK validation — COMPLETED by Team Keystorm (Session: team-keystorm, Commit: e27ad30)
 - [x] Inherited Java prototype audit and independent build investigation — SUPERSEDED by Team Keystorm; Agent Buttercup session ended with its clean worktree at prototype commit f1bbfbb and no integration commit

@@ -13,34 +13,36 @@ import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import com.zellij.keyboard.core.AgentCommand
 import com.zellij.keyboard.core.AgentCommandPlanner
+import com.zellij.keyboard.core.GestureAction
 import com.zellij.keyboard.core.GesturePad
 import com.zellij.keyboard.core.GestureResult
 import com.zellij.keyboard.core.GestureShortcutMapper
-import com.zellij.keyboard.core.KeyModifier
-import com.zellij.keyboard.core.TerminalKeyId
-import com.zellij.keyboard.core.TerminalKeyIds
-import com.zellij.keyboard.core.TerminalKeyboardEffect
-import com.zellij.keyboard.core.TerminalKeyboardInput
-import com.zellij.keyboard.core.TerminalKeyboardPlanner
-import com.zellij.keyboard.core.TerminalKeyboardState
-import com.zellij.keyboard.core.TerminalKeyboardUiChange
 import com.zellij.keyboard.core.VoiceInputSessionGuard
-import com.zellij.keyboard.core.VoiceInputTarget
 import com.zellij.keyboard.core.VoiceEditorFingerprint
+import com.zellij.keyboard.core.VoiceInputTarget
 import com.zellij.keyboard.core.VoicePermissionResult
 import com.zellij.keyboard.core.VoiceRecognitionToken
 import com.zellij.keyboard.core.VoiceResumeToken
 import com.zellij.keyboard.input.AndroidKeyEventEmitter
+import com.zellij.keyboard.input.HttpZellijBridgeClient
 import com.zellij.keyboard.input.KeyCommandSequenceDispatcher
 import com.zellij.keyboard.input.KeyCommandSequenceResult
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
-/** Voice-first terminal IME with physical-key navigation and shell command launchers. */
+/** Voice-first terminal IME with two gesture zones and physical-key Zellij navigation. */
 class ZellijKeyboardService : InputMethodService() {
-    private var keyboardState = TerminalKeyboardState()
     private var terminalInputView: TerminalKeyboardView? = null
     private var speechRecognizer: SpeechRecognizer? = null
     private var isListening = false
     private val voiceSessionGuard = VoiceInputSessionGuard()
+    private val zellijBridge: HttpZellijBridgeClient by lazy {
+        HttpZellijBridgeClient(BuildConfig.ZELLIJ_DRIVER_URL, BuildConfig.ZELLIJ_DRIVER_TOKEN)
+    }
+    private val zellijBridgeExecutor: ExecutorService =
+        Executors.newSingleThreadExecutor { runnable ->
+            Thread(runnable, "agentboard-zellij-bridge")
+        }
 
     override fun onCreate() {
         super.onCreate()
@@ -48,14 +50,9 @@ class ZellijKeyboardService : InputMethodService() {
     }
 
     override fun onCreateInputView(): View {
-        resetKeyboardState()
         return TerminalKeyboardView(this).also { view ->
             terminalInputView = view
-            view.onKeyPressed = ::handleKeyPress
             view.onGesture = ::handleGesture
-            view.onAgentCommand = ::handleAgentCommand
-            view.onMicrophonePressed = ::handleMicrophonePress
-            view.render(keyboardState)
             view.renderMicrophoneState(isListening)
         }
     }
@@ -71,7 +68,6 @@ class ZellijKeyboardService : InputMethodService() {
                 isShown = isInputViewShown,
                 target = currentVoiceInputTarget(attribute),
             )
-        resetKeyboardState()
         resumeToken?.let { token ->
             terminalInputView?.post { startVoiceRecognition(token) }
         }
@@ -79,7 +75,6 @@ class ZellijKeyboardService : InputMethodService() {
 
     override fun onFinishInputView(finishingInput: Boolean) {
         temporarilyDeactivateVoiceInput()
-        resetKeyboardState()
         super.onFinishInputView(finishingInput)
     }
 
@@ -97,47 +92,39 @@ class ZellijKeyboardService : InputMethodService() {
 
     override fun onDestroy() {
         deactivateVoiceInputForTargetChange()
+        zellijBridgeExecutor.shutdownNow()
         MicrophonePermissionContract.onPermissionResult = null
         terminalInputView = null
         super.onDestroy()
-    }
-
-    private fun handleKeyPress(keyId: TerminalKeyId) {
-        val plan =
-            TerminalKeyboardPlanner.plan(
-                state = keyboardState,
-                input = TerminalKeyboardInput.KeyPress(keyId),
-            )
-
-        when (val effect = plan.effect) {
-            is TerminalKeyboardEffect.Emit -> {
-                val inputConnection = currentInputConnection ?: return
-                AndroidKeyEventEmitter.emit(inputConnection, effect.command)
-                updateKeyboardState(plan.nextState)
-            }
-            is TerminalKeyboardEffect.StateChanged -> {
-                updateKeyboardState(plan.nextState)
-                terminalInputView?.announceKeyState(effect.change.keyId())
-            }
-            TerminalKeyboardEffect.Cancelled,
-            TerminalKeyboardEffect.NoOp,
-            -> updateKeyboardState(plan.nextState)
-        }
     }
 
     private fun handleGesture(
         pad: GesturePad,
         gesture: GestureResult,
     ) {
-        val operation = GestureShortcutMapper.map(pad, gesture)
-        val resolution = keyboardState.modifiers.resolve(operation)
-        val command = resolution.commandToEmit ?: return
-        val inputConnection = currentInputConnection ?: return
+        when (val action = GestureShortcutMapper.map(pad, gesture)) {
+            is GestureAction.DriveZellij -> driveZellij(action)
+            GestureAction.Microphone -> handleMicrophonePress()
+            GestureAction.ContinueLastAgent -> handleAgentCommand(AgentCommand.CONTINUE)
+            GestureAction.Ignored,
+            GestureAction.Cancelled,
+            -> Unit
+        }
+    }
 
-        AndroidKeyEventEmitter.emit(inputConnection, command)
-        updateKeyboardState(
-            keyboardState.copy(modifiers = resolution.nextState),
-        )
+    private fun driveZellij(action: GestureAction.DriveZellij) {
+        if (!zellijBridge.isConfigured) {
+            terminalInputView?.announceStatus(getString(R.string.zellij_bridge_not_configured))
+            return
+        }
+
+        zellijBridgeExecutor.execute {
+            if (!zellijBridge.drive(action.action)) {
+                terminalInputView?.post {
+                    terminalInputView?.announceStatus(getString(R.string.zellij_bridge_failed))
+                }
+            }
+        }
     }
 
     private fun handleAgentCommand(command: AgentCommand) {
@@ -147,7 +134,7 @@ class ZellijKeyboardService : InputMethodService() {
                 AndroidKeyEventEmitter.emit(inputConnection, keyCommand)
             }
         ) {
-            is KeyCommandSequenceResult.Completed -> resetKeyboardState()
+            is KeyCommandSequenceResult.Completed -> Unit
             is KeyCommandSequenceResult.Aborted ->
                 terminalInputView?.announceStatus(getString(R.string.agent_command_failed))
         }
@@ -399,23 +386,4 @@ class ZellijKeyboardService : InputMethodService() {
         terminalInputView?.renderMicrophoneState(listening, status)
     }
 
-    private fun updateKeyboardState(nextState: TerminalKeyboardState) {
-        keyboardState = nextState
-        terminalInputView?.render(keyboardState)
-    }
-
-    private fun resetKeyboardState() {
-        updateKeyboardState(TerminalKeyboardState())
-    }
-
-    private fun TerminalKeyboardUiChange.keyId(): TerminalKeyId =
-        when (this) {
-            TerminalKeyboardUiChange.ShiftToggled -> TerminalKeyIds.SHIFT
-            TerminalKeyboardUiChange.LayerToggled -> TerminalKeyIds.LAYER
-            is TerminalKeyboardUiChange.ModifierToggled ->
-                when (modifier) {
-                    KeyModifier.CTRL -> TerminalKeyIds.CTRL
-                    KeyModifier.ALT -> TerminalKeyIds.ALT
-                }
-        }
 }

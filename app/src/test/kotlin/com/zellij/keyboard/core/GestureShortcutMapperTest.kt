@@ -5,72 +5,77 @@ import kotlin.test.assertEquals
 
 class GestureShortcutMapperTest {
     @Test
-    fun `pane swipes map to directional focus shortcuts`() {
-        val expected =
-            mapOf(
-                swipe(SwipeDirection.UP) to ctrlShift(Key.Named.ARROW_UP),
-                swipe(SwipeDirection.DOWN) to ctrlShift(Key.Named.ARROW_DOWN),
-                swipe(SwipeDirection.LEFT) to ctrlShift(Key.Named.ARROW_LEFT),
-                swipe(SwipeDirection.RIGHT) to ctrlShift(Key.Named.ARROW_RIGHT),
-            )
-
-        expected.forEach { (gesture, command) ->
+    fun `pane swipes map to direct Zellij driver actions`() {
+        SwipeDirection.entries.forEach { direction ->
             assertEquals(
-                CommandOperation.Emit(command),
-                GestureShortcutMapper.map(GesturePad.PANES, gesture),
-                "Unexpected Panes mapping for $gesture",
+                GestureAction.DriveZellij(direction.remotePaneAction),
+                GestureShortcutMapper.map(GesturePad.PANES, swipe(direction)),
+                "Unexpected Panes mapping for $direction",
             )
         }
+    }
+
+    @Test
+    fun `tab horizontal swipes map to direct Zellij driver actions`() {
         assertEquals(
-            CommandOperation.NoOp,
-            GestureShortcutMapper.map(GesturePad.PANES, GestureResult.Tap),
+            GestureAction.DriveZellij(ZellijRemoteAction.TAB_PREVIOUS),
+            GestureShortcutMapper.map(GesturePad.TABS, swipe(SwipeDirection.LEFT)),
         )
         assertEquals(
-            CommandOperation.NoOp,
-            GestureShortcutMapper.map(GesturePad.PANES, GestureResult.LongPress),
-        )
-        assertEquals(
-            CommandOperation.Cancelled,
-            GestureShortcutMapper.map(GesturePad.PANES, GestureResult.Cancelled),
+            GestureAction.DriveZellij(ZellijRemoteAction.TAB_NEXT),
+            GestureShortcutMapper.map(GesturePad.TABS, swipe(SwipeDirection.RIGHT)),
         )
     }
 
     @Test
-    fun `tabs only react to horizontal swipes`() {
-        val expected =
-            mapOf(
-                swipe(SwipeDirection.LEFT) to ctrlShift(Key.Character(',')),
-                swipe(SwipeDirection.RIGHT) to ctrlShift(Key.Character('.')),
+    fun `tab vertical swipes are ignored`() {
+        listOf(SwipeDirection.UP, SwipeDirection.DOWN).forEach { direction ->
+            assertEquals(
+                GestureAction.Ignored,
+                GestureShortcutMapper.map(GesturePad.TABS, swipe(direction)),
             )
+        }
+    }
 
-        expected.forEach { (gesture, command) ->
-            assertEquals(
-                CommandOperation.Emit(command),
-                GestureShortcutMapper.map(GesturePad.TABS, gesture),
-                "Unexpected Tabs mapping for $gesture",
-            )
-        }
-        listOf(
-            GestureResult.Tap,
-            GestureResult.LongPress,
-            swipe(SwipeDirection.UP),
-            swipe(SwipeDirection.DOWN),
-        ).forEach { gesture ->
-            assertEquals(
-                CommandOperation.NoOp,
-                GestureShortcutMapper.map(GesturePad.TABS, gesture),
-                "Tabs should ignore $gesture",
-            )
-        }
+    @Test
+    fun `top zone tap invokes mic and hold continues the last agent`() {
         assertEquals(
-            CommandOperation.Cancelled,
-            GestureShortcutMapper.map(GesturePad.TABS, GestureResult.Cancelled),
+            GestureAction.Microphone,
+            GestureShortcutMapper.map(GesturePad.TABS, GestureResult.Tap),
         )
+        assertEquals(
+            GestureAction.ContinueLastAgent,
+            GestureShortcutMapper.map(GesturePad.TABS, GestureResult.LongPress),
+        )
+    }
+
+    @Test
+    fun `pane taps are inert and cancellation stays explicit`() {
+        assertEquals(
+            GestureAction.Ignored,
+            GestureShortcutMapper.map(GesturePad.PANES, GestureResult.Tap),
+        )
+        assertEquals(
+            GestureAction.Ignored,
+            GestureShortcutMapper.map(GesturePad.PANES, GestureResult.LongPress),
+        )
+        GesturePad.entries.forEach { pad ->
+            assertEquals(
+                GestureAction.Cancelled,
+                GestureShortcutMapper.map(pad, GestureResult.Cancelled),
+            )
+        }
     }
 
     private fun swipe(direction: SwipeDirection): GestureResult =
         GestureResult.Swipe(direction)
 
-    private fun ctrlShift(key: Key): KeyCommand =
-        KeyCommand(key, KeyModifiers.CTRL_SHIFT)
+    private val SwipeDirection.remotePaneAction: ZellijRemoteAction
+        get() =
+            when (this) {
+                SwipeDirection.UP -> ZellijRemoteAction.PANE_UP
+                SwipeDirection.DOWN -> ZellijRemoteAction.PANE_DOWN
+                SwipeDirection.LEFT -> ZellijRemoteAction.PANE_LEFT
+                SwipeDirection.RIGHT -> ZellijRemoteAction.PANE_RIGHT
+            }
 }

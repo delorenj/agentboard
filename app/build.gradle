@@ -32,6 +32,16 @@ if (appVersionCode < 1 || appVersionCode > 2_100_000_000) {
     )
 }
 
+def javaStringLiteral = { String value ->
+    '"' + value.replace('\\', '\\\\').replace('"', '\\"') + '"'
+}
+def zellijDriverUrl = providers.environmentVariable('ZELLIJ_DRIVER_URL')
+    .orElse('https://z.delo.sh/agentboard')
+    .get()
+def zellijDriverToken = providers.environmentVariable('ZELLIJ_DRIVER_TOKEN')
+    .orElse('')
+    .get()
+
 android {
     namespace = 'com.zellij.keyboard'
     compileSdk = 36
@@ -42,6 +52,12 @@ android {
         targetSdk = 36
         versionCode = appVersionCode.intValue()
         versionName = appVersionName
+        buildConfigField 'String', 'ZELLIJ_DRIVER_URL', javaStringLiteral(zellijDriverUrl)
+        buildConfigField 'String', 'ZELLIJ_DRIVER_TOKEN', javaStringLiteral(zellijDriverToken)
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     compileOptions {

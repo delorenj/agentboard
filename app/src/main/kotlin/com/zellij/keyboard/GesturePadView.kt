@@ -13,7 +13,6 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
-import android.widget.Button
 import com.zellij.keyboard.core.GestureClassifier
 import com.zellij.keyboard.core.GestureEvent
 import com.zellij.keyboard.core.GesturePad
@@ -93,6 +92,7 @@ internal class GesturePadView(
     private var listener: ((GestureResult) -> Unit)? = null
     private var longPressDeadlineMillis = 0L
     private var feedbackActive = false
+    private var statusHint: String? = null
 
     private val longPressRunnable =
         object : Runnable {
@@ -130,8 +130,8 @@ internal class GesturePadView(
         }
 
         contentDescription = semantics
-        isClickable = false
-        isLongClickable = false
+        isClickable = pad == GesturePad.TABS
+        isLongClickable = pad == GesturePad.TABS
         isFocusable = true
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
         setWillNotDraw(false)
@@ -139,6 +139,11 @@ internal class GesturePadView(
 
     fun setOnGestureResultListener(listener: (GestureResult) -> Unit) {
         this.listener = listener
+    }
+
+    fun setStatusHint(status: String?) {
+        statusHint = status
+        invalidate()
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -173,7 +178,7 @@ internal class GesturePadView(
         canvas.drawText(title, centerX, height * 0.19f, titlePaint)
         drawJoystick(canvas, centerX, height * 0.53f)
         canvas.drawText(primaryHint, centerX, height * 0.82f, hintPaint)
-        canvas.drawText(secondaryHint, centerX, height * 0.95f, hintPaint)
+        canvas.drawText(statusHint ?: secondaryHint, centerX, height * 0.95f, hintPaint)
     }
 
     override fun drawableStateChanged() {
@@ -260,14 +265,14 @@ internal class GesturePadView(
 
     override fun onInitializeAccessibilityEvent(event: AccessibilityEvent) {
         super.onInitializeAccessibilityEvent(event)
-        event.className = Button::class.java.name
+        event.className = View::class.java.name
     }
 
     override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
         super.onInitializeAccessibilityNodeInfo(info)
-        info.className = Button::class.java.name
-        info.isClickable = false
-        info.isLongClickable = false
+        info.className = View::class.java.name
+        info.isClickable = pad == GesturePad.TABS
+        info.isLongClickable = pad == GesturePad.TABS
         if (pad == GesturePad.PANES) {
             info.addAction(
                 AccessibilityNodeInfo.AccessibilityAction(
@@ -301,6 +306,18 @@ internal class GesturePadView(
         arguments: Bundle?,
     ): Boolean =
         when (action) {
+            AccessibilityNodeInfo.ACTION_CLICK ->
+                if (pad == GesturePad.TABS) {
+                    performClick()
+                } else {
+                    super.performAccessibilityAction(action, arguments)
+                }
+            AccessibilityNodeInfo.ACTION_LONG_CLICK ->
+                if (pad == GesturePad.TABS) {
+                    performLongClick()
+                } else {
+                    super.performAccessibilityAction(action, arguments)
+                }
             R.id.accessibility_swipe_up ->
                 if (pad == GesturePad.PANES) {
                     performAccessibleSwipe(SwipeDirection.UP)
@@ -398,8 +415,8 @@ internal class GesturePadView(
                     }
                 GesturePad.TABS ->
                     when (result) {
-                        GestureResult.Tap -> R.string.gesture_feedback_ignored
-                        GestureResult.LongPress -> R.string.gesture_feedback_ignored
+                        GestureResult.Tap -> R.string.tabs_feedback_microphone
+                        GestureResult.LongPress -> R.string.tabs_feedback_continue
                         is GestureResult.Swipe ->
                             when (result.direction) {
                                 SwipeDirection.UP -> R.string.gesture_feedback_ignored
