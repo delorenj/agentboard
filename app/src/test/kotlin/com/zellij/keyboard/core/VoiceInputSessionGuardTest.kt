@@ -9,101 +9,182 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class VoiceInputSessionGuardTest {
+    private val connectionA = Any()
+    private val connectionB = Any()
+    private val editorA = editor(fieldId = 10)
+    private val editorB = editor(fieldId = 20)
+
     @Test
-    fun `request hide grant and same input restart consumes resume exactly once`() {
+    fun `request hide grant and same target restart consumes resume exactly once`() {
         val guard = VoiceInputSessionGuard()
-        guard.onInputViewStarted(isShown = true)
-        guard.onPermissionRequested()
+        val target = target(connectionA, editorA)
+        guard.onInputViewStarted(isShown = true, target = target)
+        guard.onPermissionRequested(target)
         guard.onInputViewTemporarilyStopped()
         assertEquals(
             VoicePermissionResult.PendingNextInputView,
-            guard.onPermissionResult(granted = true, isShown = false),
+            guard.onPermissionResult(granted = true, isShown = false, target = null),
         )
 
-        val resume = assertNotNull(guard.onInputViewStarted(isShown = true))
-        assertTrue(guard.canResume(resume, isShown = true))
-        assertNull(guard.onInputViewStarted(isShown = true))
+        val restartedTarget = target(connectionA, editorA.copy())
+        val resume =
+            assertNotNull(
+                guard.onInputViewStarted(isShown = true, target = restartedTarget),
+            )
+        assertTrue(guard.canResume(resume, isShown = true, target = restartedTarget))
+        assertNull(guard.onInputViewStarted(isShown = true, target = restartedTarget))
     }
 
     @Test
-    fun `denial clears the permission bridge`() {
+    fun `same client switching to a different editor cancels pending resume`() {
         val guard = VoiceInputSessionGuard()
-        guard.onInputViewStarted(isShown = true)
-        guard.onPermissionRequested()
+        val requestTarget = target(connectionA, editorA)
+        guard.onInputViewStarted(isShown = true, target = requestTarget)
+        guard.onPermissionRequested(requestTarget)
         guard.onInputViewTemporarilyStopped()
 
-        assertEquals(
-            VoicePermissionResult.Denied,
-            guard.onPermissionResult(granted = false, isShown = false),
+        assertNull(
+            guard.onInputViewStarted(
+                isShown = true,
+                target = target(connectionA, editorB),
+            ),
         )
-        assertNull(guard.onInputViewStarted(isShown = true))
+        assertEquals(
+            VoicePermissionResult.Ignored,
+            guard.onPermissionResult(
+                granted = true,
+                isShown = true,
+                target = target(connectionA, editorB),
+            ),
+        )
     }
 
     @Test
-    fun `cancelled permission request ignores a late result`() {
-        val guard = VoiceInputSessionGuard()
-        guard.onInputViewStarted(isShown = true)
-        guard.onPermissionRequested()
-        guard.cancelPermissionRequest()
+    fun `recreated input connection cancels pending resume even for same editor`() {
+        val guard = pendingGrant(target(connectionA, editorA))
 
+        assertNull(
+            guard.onInputViewStarted(
+                isShown = true,
+                target = target(connectionB, editorA.copy()),
+            ),
+        )
+    }
+
+    @Test
+    fun `denial and cancellation clear the permission bridge`() {
+        val denied = VoiceInputSessionGuard()
+        val deniedTarget = target(connectionA, editorA)
+        denied.onInputViewStarted(isShown = true, target = deniedTarget)
+        denied.onPermissionRequested(deniedTarget)
+        denied.onInputViewTemporarilyStopped()
+        assertEquals(
+            VoicePermissionResult.Denied,
+            denied.onPermissionResult(granted = false, isShown = false, target = null),
+        )
+        assertNull(denied.onInputViewStarted(isShown = true, target = deniedTarget))
+
+        val cancelled = VoiceInputSessionGuard()
+        cancelled.onInputViewStarted(isShown = true, target = deniedTarget)
+        cancelled.onPermissionRequested(deniedTarget)
+        cancelled.cancelPermissionRequest()
         assertEquals(
             VoicePermissionResult.Ignored,
-            guard.onPermissionResult(granted = true, isShown = true),
+            cancelled.onPermissionResult(
+                granted = true,
+                isShown = true,
+                target = deniedTarget,
+            ),
         )
     }
 
     @Test
     fun `unbind makes a late grant ineligible for another input target`() {
         val guard = VoiceInputSessionGuard()
-        guard.onInputViewStarted(isShown = true)
-        guard.onPermissionRequested()
+        val target = target(connectionA, editorA)
+        guard.onInputViewStarted(isShown = true, target = target)
+        guard.onPermissionRequested(target)
         guard.onInputViewTemporarilyStopped()
         guard.onInputTargetChanged()
 
         assertEquals(
             VoicePermissionResult.Ignored,
-            guard.onPermissionResult(granted = true, isShown = false),
+            guard.onPermissionResult(granted = true, isShown = false, target = null),
         )
-        assertNull(guard.onInputViewStarted(isShown = true))
+        assertNull(guard.onInputViewStarted(isShown = true, target = target))
     }
 
     @Test
     fun `normal hide with no permission request never resumes`() {
         val guard = VoiceInputSessionGuard()
-        guard.onInputViewStarted(isShown = true)
+        val target = target(connectionA, editorA)
+        guard.onInputViewStarted(isShown = true, target = target)
         guard.onInputViewTemporarilyStopped()
 
-        assertNull(guard.onInputViewStarted(isShown = true))
+        assertNull(guard.onInputViewStarted(isShown = true, target = target))
     }
 
     @Test
-    fun `shown permission result can resume only its current generation`() {
+    fun `shown permission result resumes only the requesting target generation`() {
         val guard = VoiceInputSessionGuard()
-        guard.onInputViewStarted(isShown = true)
-        guard.onPermissionRequested()
+        val requestTarget = target(connectionA, editorA)
+        guard.onInputViewStarted(isShown = true, target = requestTarget)
+        guard.onPermissionRequested(requestTarget)
         val result =
             assertIs<VoicePermissionResult.ResumeNow>(
-                guard.onPermissionResult(granted = true, isShown = true),
+                guard.onPermissionResult(
+                    granted = true,
+                    isShown = true,
+                    target = requestTarget,
+                ),
             )
 
-        assertTrue(guard.canResume(result.token, isShown = true))
-        guard.onInputViewTemporarilyStopped()
-        assertFalse(guard.canResume(result.token, isShown = true))
+        assertTrue(guard.canResume(result.token, isShown = true, target = requestTarget))
+        assertFalse(
+            guard.canResume(
+                result.token,
+                isShown = true,
+                target = target(connectionA, editorB),
+            ),
+        )
     }
 
     @Test
-    fun `new input target invalidates callbacks from the previous generation`() {
+    fun `recognition from editor A cannot commit after editor B starts`() {
         val guard = VoiceInputSessionGuard()
-        guard.onInputViewStarted(isShown = true)
-        val stale = assertNotNull(guard.beginRecognition(isShown = true))
+        val targetA = target(connectionA, editorA)
+        val targetB = target(connectionA, editorB)
+        guard.onInputViewStarted(isShown = true, target = targetA)
+        val stale = assertNotNull(guard.beginRecognition(isShown = true, target = targetA))
 
         guard.onInputViewTemporarilyStopped()
-        assertFalse(guard.canCommit(stale, isShown = true))
+        guard.onInputViewStarted(isShown = true, target = targetB)
 
-        guard.onInputViewStarted(isShown = true)
-        val current = assertNotNull(guard.beginRecognition(isShown = true))
-        assertTrue(guard.canCommit(current, isShown = true))
-        guard.finishRecognition(current)
-        assertFalse(guard.canCommit(current, isShown = true))
+        assertFalse(guard.canCommit(stale, isShown = true, target = targetB))
     }
+
+    private fun pendingGrant(requestTarget: VoiceInputTarget): VoiceInputSessionGuard =
+        VoiceInputSessionGuard().apply {
+            onInputViewStarted(isShown = true, target = requestTarget)
+            onPermissionRequested(requestTarget)
+            onInputViewTemporarilyStopped()
+            assertEquals(
+                VoicePermissionResult.PendingNextInputView,
+                onPermissionResult(granted = true, isShown = false, target = null),
+            )
+        }
+
+    private fun target(
+        connection: Any,
+        editor: VoiceEditorFingerprint,
+    ): VoiceInputTarget = VoiceInputTarget(connection, editor)
+
+    private fun editor(fieldId: Int): VoiceEditorFingerprint =
+        VoiceEditorFingerprint(
+            packageName = "com.example.terminal",
+            fieldId = fieldId,
+            inputType = 1,
+            imeOptions = 2,
+            actionId = 3,
+        )
 }

@@ -25,6 +25,8 @@ import com.zellij.keyboard.core.TerminalKeyboardPlanner
 import com.zellij.keyboard.core.TerminalKeyboardState
 import com.zellij.keyboard.core.TerminalKeyboardUiChange
 import com.zellij.keyboard.core.VoiceInputSessionGuard
+import com.zellij.keyboard.core.VoiceInputTarget
+import com.zellij.keyboard.core.VoiceEditorFingerprint
 import com.zellij.keyboard.core.VoicePermissionResult
 import com.zellij.keyboard.core.VoiceRecognitionToken
 import com.zellij.keyboard.core.VoiceResumeToken
@@ -64,7 +66,11 @@ class ZellijKeyboardService : InputMethodService() {
     ) {
         super.onStartInputView(attribute, restarting)
         stopListening()
-        val resumeToken = voiceSessionGuard.onInputViewStarted(isInputViewShown)
+        val resumeToken =
+            voiceSessionGuard.onInputViewStarted(
+                isShown = isInputViewShown,
+                target = currentVoiceInputTarget(attribute),
+            )
         resetKeyboardState()
         resumeToken?.let { token ->
             terminalInputView?.post { startVoiceRecognition(token) }
@@ -156,7 +162,8 @@ class ZellijKeyboardService : InputMethodService() {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=
             PackageManager.PERMISSION_GRANTED
         ) {
-            voiceSessionGuard.onPermissionRequested()
+            val inputTarget = currentVoiceInputTarget() ?: return
+            voiceSessionGuard.onPermissionRequested(inputTarget)
             terminalInputView?.announceStatus(getString(R.string.voice_permission_needed))
             try {
                 startActivity(
@@ -179,7 +186,14 @@ class ZellijKeyboardService : InputMethodService() {
             granted &&
                 checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
                 PackageManager.PERMISSION_GRANTED
-        when (val result = voiceSessionGuard.onPermissionResult(confirmedGranted, isInputViewShown)) {
+        when (
+            val result =
+                voiceSessionGuard.onPermissionResult(
+                    confirmedGranted,
+                    isInputViewShown,
+                    currentVoiceInputTarget(),
+                )
+        ) {
             VoicePermissionResult.Ignored,
             VoicePermissionResult.PendingNextInputView,
             -> Unit
@@ -197,7 +211,12 @@ class ZellijKeyboardService : InputMethodService() {
             return
         }
         if (!isInputViewShown ||
-            (resumeToken != null && !voiceSessionGuard.canResume(resumeToken, isInputViewShown))
+            (resumeToken != null &&
+                !voiceSessionGuard.canResume(
+                    resumeToken,
+                    isInputViewShown,
+                    currentVoiceInputTarget(),
+                ))
         ) {
             return
         }
@@ -213,8 +232,9 @@ class ZellijKeyboardService : InputMethodService() {
         }
 
         val inputConnection = currentInputConnection ?: return
+        val inputTarget = currentVoiceInputTarget() ?: return
         val recognitionToken =
-            voiceSessionGuard.beginRecognition(isInputViewShown) ?: return
+            voiceSessionGuard.beginRecognition(isInputViewShown, inputTarget) ?: return
 
         try {
             val recognizer = SpeechRecognizer.createSpeechRecognizer(this)
@@ -307,7 +327,7 @@ class ZellijKeyboardService : InputMethodService() {
         token: VoiceRecognitionToken,
         inputConnection: InputConnection,
     ): Boolean {
-        if (!voiceSessionGuard.canCommit(token, isInputViewShown)) {
+        if (!voiceSessionGuard.canCommit(token, isInputViewShown, currentVoiceInputTarget())) {
             return false
         }
         if (currentInputConnection !== inputConnection) {
@@ -315,6 +335,24 @@ class ZellijKeyboardService : InputMethodService() {
             return false
         }
         return true
+    }
+
+    private fun currentVoiceInputTarget(
+        editorInfo: EditorInfo? = currentInputEditorInfo,
+    ): VoiceInputTarget? {
+        val inputConnection = currentInputConnection ?: return null
+        val info = editorInfo ?: return null
+        return VoiceInputTarget(
+            connectionIdentity = inputConnection,
+            editor =
+                VoiceEditorFingerprint(
+                    packageName = info.packageName,
+                    fieldId = info.fieldId,
+                    inputType = info.inputType,
+                    imeOptions = info.imeOptions,
+                    actionId = info.actionId,
+                ),
+        )
     }
 
     private fun completeRecognition(
