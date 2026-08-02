@@ -11,6 +11,16 @@ class VoiceRecognitionToken internal constructor(
     internal val recognitionSequence: Long,
 )
 
+sealed interface VoicePermissionResult {
+    data object Ignored : VoicePermissionResult
+
+    data object Denied : VoicePermissionResult
+
+    data object PendingNextInputView : VoicePermissionResult
+
+    data class ResumeNow(val token: VoiceResumeToken) : VoicePermissionResult
+}
+
 /**
  * Pure lifecycle gate for microphone permission and recognition callbacks.
  * Every input-view transition invalidates tokens from the previous target.
@@ -33,14 +43,24 @@ class VoiceInputSessionGuard {
         resumeAfterPermission = false
     }
 
-    /** Returns false for late results from a request invalidated by a lifecycle stop. */
-    fun onPermissionResult(granted: Boolean): Boolean {
+    fun onPermissionResult(
+        granted: Boolean,
+        isShown: Boolean,
+    ): VoicePermissionResult {
         if (!permissionRequestOutstanding) {
-            return false
+            return VoicePermissionResult.Ignored
         }
         permissionRequestOutstanding = false
-        resumeAfterPermission = granted
-        return true
+        if (!granted) {
+            resumeAfterPermission = false
+            return VoicePermissionResult.Denied
+        }
+        if (inputViewActive && isShown) {
+            resumeAfterPermission = false
+            return VoicePermissionResult.ResumeNow(VoiceResumeToken(inputGeneration))
+        }
+        resumeAfterPermission = true
+        return VoicePermissionResult.PendingNextInputView
     }
 
     fun onInputViewStarted(isShown: Boolean): VoiceResumeToken? {
@@ -49,9 +69,6 @@ class VoiceInputSessionGuard {
         recognitionToken = null
 
         if (!isShown || !resumeAfterPermission) {
-            if (!isShown) {
-                resumeAfterPermission = false
-            }
             return null
         }
 
@@ -95,11 +112,16 @@ class VoiceInputSessionGuard {
         recognitionToken = null
     }
 
-    fun onInputViewStopped() {
+    /** Hiding the IME invalidates recognition but preserves an outstanding permission bridge. */
+    fun onInputViewTemporarilyStopped() {
         inputGeneration += 1
         inputViewActive = false
-        permissionRequestOutstanding = false
-        resumeAfterPermission = false
         recognitionToken = null
+    }
+
+    /** A real input-target change must not carry permission resume state into another target. */
+    fun onInputTargetChanged() {
+        onInputViewTemporarilyStopped()
+        cancelPermissionRequest()
     }
 }

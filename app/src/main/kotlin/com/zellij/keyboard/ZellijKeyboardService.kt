@@ -25,6 +25,7 @@ import com.zellij.keyboard.core.TerminalKeyboardPlanner
 import com.zellij.keyboard.core.TerminalKeyboardState
 import com.zellij.keyboard.core.TerminalKeyboardUiChange
 import com.zellij.keyboard.core.VoiceInputSessionGuard
+import com.zellij.keyboard.core.VoicePermissionResult
 import com.zellij.keyboard.core.VoiceRecognitionToken
 import com.zellij.keyboard.core.VoiceResumeToken
 import com.zellij.keyboard.input.AndroidKeyEventEmitter
@@ -71,25 +72,25 @@ class ZellijKeyboardService : InputMethodService() {
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
-        deactivateVoiceInput()
+        temporarilyDeactivateVoiceInput()
         resetKeyboardState()
         super.onFinishInputView(finishingInput)
     }
 
     override fun onWindowHidden() {
-        deactivateVoiceInput()
+        temporarilyDeactivateVoiceInput()
         super.onWindowHidden()
     }
 
     override fun onUnbindInput() {
-        deactivateVoiceInput()
+        deactivateVoiceInputForTargetChange()
         super.onUnbindInput()
     }
 
     override fun onEvaluateFullscreenMode(): Boolean = false
 
     override fun onDestroy() {
-        deactivateVoiceInput()
+        deactivateVoiceInputForTargetChange()
         MicrophonePermissionContract.onPermissionResult = null
         terminalInputView = null
         super.onDestroy()
@@ -178,11 +179,16 @@ class ZellijKeyboardService : InputMethodService() {
             granted &&
                 checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
                 PackageManager.PERMISSION_GRANTED
-        if (!voiceSessionGuard.onPermissionResult(confirmedGranted)) {
-            return
-        }
-        if (!confirmedGranted && isInputViewShown) {
-            terminalInputView?.announceStatus(getString(R.string.voice_permission_denied))
+        when (val result = voiceSessionGuard.onPermissionResult(confirmedGranted, isInputViewShown)) {
+            VoicePermissionResult.Ignored,
+            VoicePermissionResult.PendingNextInputView,
+            -> Unit
+            VoicePermissionResult.Denied ->
+                if (isInputViewShown) {
+                    terminalInputView?.announceStatus(getString(R.string.voice_permission_denied))
+                }
+            is VoicePermissionResult.ResumeNow ->
+                terminalInputView?.post { startVoiceRecognition(result.token) }
         }
     }
 
@@ -326,8 +332,14 @@ class ZellijKeyboardService : InputMethodService() {
         setListening(false)
     }
 
-    private fun deactivateVoiceInput() {
-        voiceSessionGuard.onInputViewStopped()
+    private fun temporarilyDeactivateVoiceInput() {
+        voiceSessionGuard.onInputViewTemporarilyStopped()
+        releaseSpeechRecognizer(cancel = isListening)
+        setListening(false)
+    }
+
+    private fun deactivateVoiceInputForTargetChange() {
+        voiceSessionGuard.onInputTargetChanged()
         releaseSpeechRecognizer(cancel = isListening)
         setListening(false)
     }
