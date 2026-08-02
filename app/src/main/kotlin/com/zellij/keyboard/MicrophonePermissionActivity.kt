@@ -33,8 +33,9 @@ class MicrophonePermissionActivity : Activity() {
     }
 
     private fun publishPermissionResult(granted: Boolean) {
-        MicrophonePermissionContract.onPermissionResult?.invoke(granted)
+        val callback = MicrophonePermissionContract.onPermissionResult
         finish()
+        callback?.invoke(granted)
     }
 
     private companion object {

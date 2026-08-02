@@ -10,6 +10,7 @@ import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.view.View
 import android.view.inputmethod.EditorInfo
+import android.view.inputmethod.InputConnection
 import com.zellij.keyboard.core.AgentCommand
 import com.zellij.keyboard.core.AgentCommandPlanner
 import com.zellij.keyboard.core.GesturePad
@@ -23,7 +24,12 @@ import com.zellij.keyboard.core.TerminalKeyboardInput
 import com.zellij.keyboard.core.TerminalKeyboardPlanner
 import com.zellij.keyboard.core.TerminalKeyboardState
 import com.zellij.keyboard.core.TerminalKeyboardUiChange
+import com.zellij.keyboard.core.VoiceInputSessionGuard
+import com.zellij.keyboard.core.VoiceRecognitionToken
+import com.zellij.keyboard.core.VoiceResumeToken
 import com.zellij.keyboard.input.AndroidKeyEventEmitter
+import com.zellij.keyboard.input.KeyCommandSequenceDispatcher
+import com.zellij.keyboard.input.KeyCommandSequenceResult
 
 /** Voice-first terminal IME with physical-key navigation and shell command launchers. */
 class ZellijKeyboardService : InputMethodService() {
@@ -31,76 +37,7 @@ class ZellijKeyboardService : InputMethodService() {
     private var terminalInputView: TerminalKeyboardView? = null
     private var speechRecognizer: SpeechRecognizer? = null
     private var isListening = false
-
-    private val recognitionListener =
-        object : RecognitionListener {
-            override fun onReadyForSpeech(params: Bundle?) {
-                if (isListening) {
-                    setListening(true, getString(R.string.voice_listening))
-                }
-            }
-
-            override fun onBeginningOfSpeech() = Unit
-
-            override fun onRmsChanged(rmsdB: Float) = Unit
-
-            override fun onBufferReceived(buffer: ByteArray?) = Unit
-
-            override fun onEndOfSpeech() = Unit
-
-            override fun onError(error: Int) {
-                if (!isListening) {
-                    return
-                }
-                val message =
-                    if (error == SpeechRecognizer.ERROR_NO_MATCH ||
-                        error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
-                    ) {
-                        getString(R.string.voice_no_match)
-                    } else {
-                        getString(R.string.voice_error)
-                    }
-                if (error == SpeechRecognizer.ERROR_CLIENT ||
-                    error == SpeechRecognizer.ERROR_RECOGNIZER_BUSY
-                ) {
-                    speechRecognizer?.destroy()
-                    speechRecognizer = null
-                }
-                setListening(false, message)
-            }
-
-            override fun onResults(results: Bundle?) {
-                if (!isListening) {
-                    return
-                }
-                val transcription =
-                    results
-                        ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                        ?.firstOrNull()
-                        ?.trim()
-                        .orEmpty()
-
-                if (transcription.isEmpty()) {
-                    setListening(false, getString(R.string.voice_no_match))
-                    return
-                }
-
-                val inserted = currentInputConnection?.commitText(transcription, 1) == true
-                setListening(
-                    false,
-                    getString(
-                        if (inserted) R.string.voice_inserted else R.string.voice_error,
-                    ),
-                )
-            }
-
-            override fun onPartialResults(partialResults: Bundle?) = Unit
-
-            override fun onEvent(
-                eventType: Int,
-                params: Bundle?,
-            ) = Unit
-        }
+    private val voiceSessionGuard = VoiceInputSessionGuard()
 
     override fun onCreate() {
         super.onCreate()
@@ -125,21 +62,34 @@ class ZellijKeyboardService : InputMethodService() {
         restarting: Boolean,
     ) {
         super.onStartInputView(attribute, restarting)
+        stopListening()
+        val resumeToken = voiceSessionGuard.onInputViewStarted(isInputViewShown)
         resetKeyboardState()
+        resumeToken?.let { token ->
+            terminalInputView?.post { startVoiceRecognition(token) }
+        }
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
-        stopListening()
+        deactivateVoiceInput()
         resetKeyboardState()
         super.onFinishInputView(finishingInput)
+    }
+
+    override fun onWindowHidden() {
+        deactivateVoiceInput()
+        super.onWindowHidden()
+    }
+
+    override fun onUnbindInput() {
+        deactivateVoiceInput()
+        super.onUnbindInput()
     }
 
     override fun onEvaluateFullscreenMode(): Boolean = false
 
     override fun onDestroy() {
-        isListening = false
-        speechRecognizer?.destroy()
-        speechRecognizer = null
+        deactivateVoiceInput()
         MicrophonePermissionContract.onPermissionResult = null
         terminalInputView = null
         super.onDestroy()
@@ -185,10 +135,15 @@ class ZellijKeyboardService : InputMethodService() {
 
     private fun handleAgentCommand(command: AgentCommand) {
         val inputConnection = currentInputConnection ?: return
-        AgentCommandPlanner.plan(command).forEach { keyCommand ->
-            AndroidKeyEventEmitter.emit(inputConnection, keyCommand)
+        when (
+            KeyCommandSequenceDispatcher.dispatch(AgentCommandPlanner.plan(command)) { keyCommand ->
+                AndroidKeyEventEmitter.emit(inputConnection, keyCommand)
+            }
+        ) {
+            is KeyCommandSequenceResult.Completed -> resetKeyboardState()
+            is KeyCommandSequenceResult.Aborted ->
+                terminalInputView?.announceStatus(getString(R.string.agent_command_failed))
         }
-        resetKeyboardState()
     }
 
     private fun handleMicrophonePress() {
@@ -200,6 +155,7 @@ class ZellijKeyboardService : InputMethodService() {
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=
             PackageManager.PERMISSION_GRANTED
         ) {
+            voiceSessionGuard.onPermissionRequested()
             terminalInputView?.announceStatus(getString(R.string.voice_permission_needed))
             try {
                 startActivity(
@@ -208,6 +164,7 @@ class ZellijKeyboardService : InputMethodService() {
                     },
                 )
             } catch (_: RuntimeException) {
+                voiceSessionGuard.cancelPermissionRequest()
                 terminalInputView?.announceStatus(getString(R.string.voice_permission_error))
             }
             return
@@ -217,18 +174,25 @@ class ZellijKeyboardService : InputMethodService() {
     }
 
     private fun handleMicrophonePermissionResult(granted: Boolean) {
-        if (granted &&
-            checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            terminalInputView?.post(::startVoiceRecognition)
-        } else {
+        val confirmedGranted =
+            granted &&
+                checkSelfPermission(Manifest.permission.RECORD_AUDIO) ==
+                PackageManager.PERMISSION_GRANTED
+        if (!voiceSessionGuard.onPermissionResult(confirmedGranted)) {
+            return
+        }
+        if (!confirmedGranted && isInputViewShown) {
             terminalInputView?.announceStatus(getString(R.string.voice_permission_denied))
         }
     }
 
-    private fun startVoiceRecognition() {
+    private fun startVoiceRecognition(resumeToken: VoiceResumeToken? = null) {
         if (isListening) {
+            return
+        }
+        if (!isInputViewShown ||
+            (resumeToken != null && !voiceSessionGuard.canResume(resumeToken, isInputViewShown))
+        ) {
             return
         }
         if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) !=
@@ -242,14 +206,16 @@ class ZellijKeyboardService : InputMethodService() {
             return
         }
 
-        val recognizer =
-            speechRecognizer
-                ?: SpeechRecognizer.createSpeechRecognizer(this).also {
-                    it.setRecognitionListener(recognitionListener)
-                    speechRecognizer = it
-                }
+        val inputConnection = currentInputConnection ?: return
+        val recognitionToken =
+            voiceSessionGuard.beginRecognition(isInputViewShown) ?: return
 
         try {
+            val recognizer = SpeechRecognizer.createSpeechRecognizer(this)
+            speechRecognizer = recognizer
+            recognizer.setRecognitionListener(
+                createRecognitionListener(recognitionToken, inputConnection),
+            )
             setListening(true)
             recognizer.startListening(
                 Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -262,18 +228,117 @@ class ZellijKeyboardService : InputMethodService() {
                 },
             )
         } catch (_: RuntimeException) {
-            recognizer.destroy()
-            speechRecognizer = null
-            setListening(false, getString(R.string.voice_error))
+            completeRecognition(recognitionToken, getString(R.string.voice_error))
         }
     }
 
-    private fun stopListening() {
-        val shouldCancel = isListening
-        setListening(false)
-        if (shouldCancel) {
-            speechRecognizer?.cancel()
+    private fun createRecognitionListener(
+        token: VoiceRecognitionToken,
+        inputConnection: InputConnection,
+    ): RecognitionListener =
+        object : RecognitionListener {
+            override fun onReadyForSpeech(params: Bundle?) {
+                if (isCurrentRecognition(token, inputConnection)) {
+                    setListening(true, getString(R.string.voice_listening))
+                }
+            }
+
+            override fun onBeginningOfSpeech() = Unit
+
+            override fun onRmsChanged(rmsdB: Float) = Unit
+
+            override fun onBufferReceived(buffer: ByteArray?) = Unit
+
+            override fun onEndOfSpeech() = Unit
+
+            override fun onError(error: Int) {
+                if (!isCurrentRecognition(token, inputConnection)) {
+                    return
+                }
+                val message =
+                    if (error == SpeechRecognizer.ERROR_NO_MATCH ||
+                        error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
+                    ) {
+                        getString(R.string.voice_no_match)
+                    } else {
+                        getString(R.string.voice_error)
+                    }
+                completeRecognition(token, message)
+            }
+
+            override fun onResults(results: Bundle?) {
+                if (!isCurrentRecognition(token, inputConnection)) {
+                    return
+                }
+                val transcription =
+                    results
+                        ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                        ?.firstOrNull()
+                        ?.trim()
+                        .orEmpty()
+
+                if (transcription.isEmpty()) {
+                    completeRecognition(token, getString(R.string.voice_no_match))
+                    return
+                }
+
+                val inserted = inputConnection.commitText(transcription, 1)
+                completeRecognition(
+                    token,
+                    getString(if (inserted) R.string.voice_inserted else R.string.voice_error),
+                )
+            }
+
+            override fun onPartialResults(partialResults: Bundle?) = Unit
+
+            override fun onEvent(
+                eventType: Int,
+                params: Bundle?,
+            ) = Unit
         }
+
+    private fun isCurrentRecognition(
+        token: VoiceRecognitionToken,
+        inputConnection: InputConnection,
+    ): Boolean {
+        if (!voiceSessionGuard.canCommit(token, isInputViewShown)) {
+            return false
+        }
+        if (currentInputConnection !== inputConnection) {
+            completeRecognition(token, status = null)
+            return false
+        }
+        return true
+    }
+
+    private fun completeRecognition(
+        token: VoiceRecognitionToken,
+        status: String?,
+    ) {
+        voiceSessionGuard.finishRecognition(token)
+        releaseSpeechRecognizer(cancel = false)
+        setListening(false, status)
+    }
+
+    private fun stopListening() {
+        voiceSessionGuard.cancelRecognition()
+        releaseSpeechRecognizer(cancel = isListening)
+        setListening(false)
+    }
+
+    private fun deactivateVoiceInput() {
+        voiceSessionGuard.onInputViewStopped()
+        releaseSpeechRecognizer(cancel = isListening)
+        setListening(false)
+    }
+
+    private fun releaseSpeechRecognizer(cancel: Boolean) {
+        val recognizer = speechRecognizer ?: return
+        speechRecognizer = null
+        if (cancel) {
+            recognizer.cancel()
+        }
+        recognizer.destroy()
     }
 
     private fun setListening(

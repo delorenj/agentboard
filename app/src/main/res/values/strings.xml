@@ -35,6 +35,7 @@
     <string name="voice_no_match">I didn’t catch that. Tap Mic to try again.</string>
     <string name="voice_error">Voice input stopped. Tap Mic to try again.</string>
     <string name="voice_inserted">Voice input inserted</string>
+    <string name="agent_command_failed">Agent command stopped before execution because the terminal rejected input.</string>
     <string name="key_state_armed">Armed for the next command</string>
     <string name="key_state_idle">Not armed</string>
 </resources>
