@@ -9,7 +9,6 @@ import com.zellij.keyboard.core.GestureResult
 internal class TerminalKeyboardView(
     context: Context,
 ) : LinearLayout(context) {
-    private val keyGap = resources.getDimensionPixelSize(R.dimen.key_gap)
     private val zoneHeight =
         resources.getDimensionPixelSize(R.dimen.gesture_zones_height) / 2
     private val tabsZone = createGestureZone(GesturePad.TABS)
@@ -19,20 +18,10 @@ internal class TerminalKeyboardView(
     init {
         orientation = VERTICAL
         setBackgroundColor(context.getColor(R.color.keyboard_background))
-        val outerPadding = resources.getDimensionPixelSize(R.dimen.keyboard_padding)
-        setPadding(outerPadding, outerPadding, outerPadding, outerPadding)
-
-        addView(
-            tabsZone,
-            LayoutParams(LayoutParams.MATCH_PARENT, zoneHeight).apply {
-                bottomMargin = keyGap / 2
-            },
-        )
+        addView(tabsZone, LayoutParams(LayoutParams.MATCH_PARENT, zoneHeight))
         addView(
             createGestureZone(GesturePad.PANES),
-            LayoutParams(LayoutParams.MATCH_PARENT, zoneHeight).apply {
-                topMargin = keyGap / 2
-            },
+            LayoutParams(LayoutParams.MATCH_PARENT, zoneHeight),
         )
     }
 

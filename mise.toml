@@ -88,9 +88,8 @@ description = "Run Android lint for the debug variant with the mise-pinned Java 
 run = "./gradlew lintDebug"
 
 [tasks.check]
-description = "Run the complete non-mutating local quality gate by composing test and lint. Produces their reports, exits non-zero if either fails, and never changes VERSION."
-depends = ["test", "lint"]
-run = "echo 'Agentboard test and lint checks passed.'"
+description = "Run the complete non-mutating local quality gate in one Gradle invocation. Produces test and lint reports, exits non-zero if either fails, and never changes VERSION."
+run = "./gradlew testDebugUnitTest lintDebug"
 
 [tasks.clean]
 description = "Remove generated Gradle and Android build outputs. Does not alter source, local SDK configuration, or VERSION. Run when stale build state needs to be discarded."

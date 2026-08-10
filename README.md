@@ -142,9 +142,11 @@ uses the HTTPS Zellij bridge. Shell continuation uses paired physical
 `KeyEvent` objects through `sendKeyEvent`. Voice transcription uses
 `commitText` because it is already multi-character text.
 
-The UI uses a `LinearLayout` containing two custom Android `View` gesture
-zones. It renders no buttons or QWERTY rows. Framework Views keep IME startup
-direct and expose touch and accessibility APIs without an interop boundary.
+The UI uses a `LinearLayout` containing two flat custom Android `View` gesture
+zones. It renders no buttons, cards, joystick shapes, directional controls, or
+QWERTY rows—only quiet `TABS` and `PANES` labels plus transient status text.
+Framework Views keep IME startup direct and expose touch and accessibility APIs
+without an interop boundary.
 Core gesture and key-event planning remains immutable Kotlin so JVM tests can
 run without an Android device.
 
@@ -168,9 +170,13 @@ APK construction. The current gate runs 66 JVM tests with zero failures and
 Android lint with zero errors; the only lint warning is the intentionally
 pinned Gradle 8.14.3 versus available 8.14.5. The bridge has also been tested
 through the public Cloudflare and Traefik path against the real `Workspace`
-session. Device installation, IME interaction, speech-provider behavior,
-runtime permission UX, TalkBack, and portrait/landscape ergonomics remain
-device-only seams until explicitly tested.
+session.
+
+On-device validation on a Galaxy S24 Ultra covers APK replacement, IME
+enablement and selection, input-view rendering, tab swipes, four-direction pane
+swipes, both horizontal edge crossings, and physical-key continuation output.
+Speech-provider behavior, runtime permission UX, TalkBack, and a focused
+portrait/landscape ergonomics pass remain device-only seams.
 
 ## Security and privacy
 

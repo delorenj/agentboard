@@ -1,13 +1,9 @@
 <resources>
     <string name="app_name">Agentboard</string>
     <string name="tabs_pad_title">TABS</string>
-    <string name="tabs_pad_primary_hint">← previous tab · tap mic · next tab →</string>
-    <string name="tabs_pad_secondary_hint">hold to continue · up/down ignored</string>
     <string name="tabs_pad_content_description">Tabs zone. Swipe left for the previous tab or right for the next tab. Tap for microphone input. Touch and hold to continue the last agent. Up and down are ignored.</string>
     <string name="panes_pad_title">PANES</string>
-    <string name="panes_pad_primary_hint">swipe ↑ ↓ ← → · navigate panes</string>
-    <string name="panes_pad_secondary_hint">direct Zellij control · edges cross tabs</string>
-    <string name="panes_pad_content_description">Panes joystick. Swipe up, down, left, or right to navigate panes. Horizontal edge swipes can cross tabs. Taps and holds are ignored.</string>
+    <string name="panes_pad_content_description">Panes zone. Swipe up, down, left, or right to navigate panes. Horizontal edge swipes can cross tabs. Taps and holds are ignored.</string>
     <string name="gesture_action_swipe_up">Run swipe up shortcut</string>
     <string name="gesture_action_swipe_down">Run swipe down shortcut</string>
     <string name="gesture_action_swipe_left">Run swipe left shortcut</string>

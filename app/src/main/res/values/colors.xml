@@ -1,9 +1,6 @@
 <resources>
     <color name="keyboard_background">#10151D</color>
-    <color name="gesture_background">#17212D</color>
     <color name="gesture_background_pressed">#263A4E</color>
-    <color name="gesture_border">#3A4C62</color>
-    <color name="gesture_border_active">#79D9FF</color>
     <color name="gesture_title">#F5F8FC</color>
     <color name="gesture_hint">#B7C4D4</color>
     <color name="terminal_accent">#53E0B1</color>

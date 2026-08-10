@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.RectF
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.TypedValue
@@ -20,7 +19,6 @@ import com.zellij.keyboard.core.GestureResult
 import com.zellij.keyboard.core.GestureThresholds
 import com.zellij.keyboard.core.SwipeDirection
 import kotlin.math.max
-import kotlin.math.min
 
 /**
  * Single-pointer terminal gesture surface backed by the platform-independent
@@ -45,48 +43,21 @@ internal class GesturePadView(
         )
     private val classifier = GestureClassifier(thresholds)
 
-    private val cardBounds = RectF()
-    private val cardPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val borderPaint =
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = resources.getDimension(R.dimen.gesture_border_width)
-        }
     private val titlePaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = context.getColor(R.color.gesture_title)
             textAlign = Paint.Align.CENTER
-            textSize = spToPx(17f)
+            textSize = spToPx(13f)
             typeface = android.graphics.Typeface.DEFAULT_BOLD
         }
-    private val hintPaint =
+    private val statusPaint =
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = context.getColor(R.color.gesture_hint)
             textAlign = Paint.Align.CENTER
-            textSize = spToPx(10.5f)
-        }
-    private val joystickPaint =
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = context.getColor(R.color.terminal_accent)
-            style = Paint.Style.FILL
-        }
-    private val joystickRingPaint =
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = context.getColor(R.color.gesture_hint)
-            style = Paint.Style.STROKE
-            strokeWidth = resources.getDimension(R.dimen.gesture_joystick_ring_width)
-        }
-    private val joystickGlyphPaint =
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = context.getColor(R.color.gesture_hint)
-            textAlign = Paint.Align.CENTER
-            textSize = spToPx(18f)
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            textSize = spToPx(11f)
         }
 
     private val title: String
-    private val primaryHint: String
-    private val secondaryHint: String
     private val semantics: String
 
     private var listener: ((GestureResult) -> Unit)? = null
@@ -117,14 +88,10 @@ internal class GesturePadView(
         when (pad) {
             GesturePad.TABS -> {
                 title = resources.getString(R.string.tabs_pad_title)
-                primaryHint = resources.getString(R.string.tabs_pad_primary_hint)
-                secondaryHint = resources.getString(R.string.tabs_pad_secondary_hint)
                 semantics = resources.getString(R.string.tabs_pad_content_description)
             }
             GesturePad.PANES -> {
                 title = resources.getString(R.string.panes_pad_title)
-                primaryHint = resources.getString(R.string.panes_pad_primary_hint)
-                secondaryHint = resources.getString(R.string.panes_pad_secondary_hint)
                 semantics = resources.getString(R.string.panes_pad_content_description)
             }
         }
@@ -149,36 +116,13 @@ internal class GesturePadView(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        val borderInset = borderPaint.strokeWidth / 2f
-        cardBounds.set(
-            borderInset,
-            borderInset,
-            width.toFloat() - borderInset,
-            height.toFloat() - borderInset,
-        )
-        val radius = resources.getDimension(R.dimen.gesture_corner_radius)
-
-        cardPaint.color =
-            if (isPressed || feedbackActive) {
-                context.getColor(R.color.gesture_background_pressed)
-            } else {
-                context.getColor(R.color.gesture_background)
-            }
-        canvas.drawRoundRect(cardBounds, radius, radius, cardPaint)
-
-        borderPaint.color =
-            if (isFocused || isPressed || feedbackActive) {
-                context.getColor(R.color.gesture_border_active)
-            } else {
-                context.getColor(R.color.gesture_border)
-            }
-        canvas.drawRoundRect(cardBounds, radius, radius, borderPaint)
+        if (isPressed || feedbackActive) {
+            canvas.drawColor(context.getColor(R.color.gesture_background_pressed))
+        }
 
         val centerX = width / 2f
-        canvas.drawText(title, centerX, height * 0.19f, titlePaint)
-        drawJoystick(canvas, centerX, height * 0.53f)
-        canvas.drawText(primaryHint, centerX, height * 0.82f, hintPaint)
-        canvas.drawText(statusHint ?: secondaryHint, centerX, height * 0.95f, hintPaint)
+        canvas.drawText(title, centerX, height * 0.51f, titlePaint)
+        statusHint?.let { canvas.drawText(it, centerX, height * 0.65f, statusPaint) }
     }
 
     override fun drawableStateChanged() {
@@ -428,23 +372,6 @@ internal class GesturePadView(
                     }
             }
         return resources.getString(stringId)
-    }
-
-    private fun drawJoystick(
-        canvas: Canvas,
-        centerX: Float,
-        centerY: Float,
-    ) {
-        val radius = min(width, height) * 0.085f
-        canvas.drawCircle(centerX, centerY, radius * 1.75f, joystickRingPaint)
-        canvas.drawCircle(centerX, centerY, radius, joystickPaint)
-        canvas.drawText("←", centerX - radius * 3.2f, centerY + radius * 0.65f, joystickGlyphPaint)
-        canvas.drawText("→", centerX + radius * 3.2f, centerY + radius * 0.65f, joystickGlyphPaint)
-
-        if (pad == GesturePad.PANES) {
-            canvas.drawText("↑", centerX, centerY - radius * 2.45f, joystickGlyphPaint)
-            canvas.drawText("↓", centerX, centerY + radius * 3.15f, joystickGlyphPaint)
-        }
     }
 
     @Suppress("DEPRECATION")
