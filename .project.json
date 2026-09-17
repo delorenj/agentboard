@@ -10,12 +10,5 @@
     "board_id": "eaa6316e-c8f8-4552-b1a8-bf4a61ce0063",
     "state": "active"
   },
-  "agents": {},
-  "automation": {
-    "reconcile": {
-      "enabled": false,
-      "grace_hours": 0,
-      "auto_review": true
-    }
-  }
+  "agents": {}
 }
